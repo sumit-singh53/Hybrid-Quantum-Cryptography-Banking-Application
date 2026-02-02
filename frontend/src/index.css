@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Baseline reset to keep global styles neutral */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+
+
+body {
+  margin     : 0;
+  padding    : 0;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+.heartbeat-dot {
+  animation: heartbeat 1.2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0% {
+    transform : scale(1);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+
+  30% {
+    transform : scale(1.35);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  }
+
+  45% {
+    transform : scale(1);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+
+  60% {
+    transform : scale(1.2);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+  }
+
+  100% {
+    transform : scale(1);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+}

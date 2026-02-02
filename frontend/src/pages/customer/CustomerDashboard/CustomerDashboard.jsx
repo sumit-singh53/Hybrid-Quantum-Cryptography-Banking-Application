@@ -1,0 +1,206 @@
+import React, { useEffect, useState } from "react";
+import "./CustomerDashboard.css";
+import { Link } from "react-router-dom";
+import { fetchCustomerOverview } from "../../../services/customerService";
+import { getTransactionHistory } from "../../../services/transactionService";
+
+const CustomerDashboard = () => {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [overviewResult, historyResult] = await Promise.allSettled([
+          fetchCustomerOverview(),
+          getTransactionHistory(),
+        ]);
+
+        if (overviewResult.status === "fulfilled") {
+          setOverview(overviewResult.value);
+          setError(null);
+        } else {
+          throw overviewResult.reason;
+        }
+
+        if (historyResult.status === "fulfilled") {
+          const normalized = (historyResult.value || [])
+            .slice(0, 5)
+            .map((tx) => ({
+              ...tx,
+              counterparty:
+                tx.direction === "SENT" ? tx.to_account : tx.from_account,
+            }));
+          setHistory(normalized);
+          setHistoryError(null);
+        } else {
+          setHistory([]);
+          setHistoryError(
+            historyResult.reason?.response?.data?.message ||
+              "Unable to load recent transactions",
+          );
+        }
+      } catch (err) {
+        setError(
+          err?.response?.data?.message || "Unable to load dashboard insights",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  if (loading) {
+    return <p>Gathering your secure dashboard...</p>;
+  }
+
+  if (error) {
+    return <p className="text-sm font-medium text-rose-600">{error}</p>;
+  }
+
+  const recentTransactions = history;
+  const certificateStatus = overview?.certificate?.status || "Unknown";
+  const certificateExpires = overview?.certificate?.valid_to || "--";
+  const lastLogin = overview?.last_login || {};
+  const deviceDetails = overview?.device || {};
+  const devicePrimaryText =
+    deviceDetails?.name ||
+    deviceDetails?.model ||
+    lastLogin?.device_type ||
+    "Bound device";
+  const locationText =
+    lastLogin?.city && lastLogin?.country
+      ? `${lastLogin.city}, ${lastLogin.country}`
+      : lastLogin?.city || lastLogin?.country || "Location unavailable";
+  const loginTimestamp = lastLogin?.timestamp || "--";
+  return (
+    <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
+      <div>
+        <h2 className="text-3xl font-semibold text-slate-900">
+          👤 Customer Dashboard
+        </h2>
+        <p className="mt-2 text-base text-slate-600">
+          Track your balance, review the latest transactions, and monitor the
+          health of your post-quantum certificate.
+        </p>
+      </div>
+
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h4 className="text-sm font-medium uppercase tracking-wide text-slate-500">
+            Account Balance
+          </h4>
+          <p className="mt-3 text-4xl font-semibold text-slate-900">
+            ₹ {overview?.account_balance?.toLocaleString("en-IN")}
+          </p>
+          <p className="text-sm text-slate-500">
+            {overview?.currency || "INR"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h4 className="text-sm font-medium uppercase tracking-wide text-slate-500">
+            Certificate Status
+          </h4>
+          <p className="mt-3 text-3xl font-semibold text-slate-900">
+            {certificateStatus}
+          </p>
+          <p className="text-sm text-slate-500">
+            Valid until: {certificateExpires}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h4 className="text-sm font-medium uppercase tracking-wide text-slate-500">
+            Last Login Device
+          </h4>
+          <p className="mt-3 text-lg font-semibold text-slate-900">
+            {devicePrimaryText}
+          </p>
+          <p className="text-sm text-slate-500">
+            {locationText}
+            <br />
+            {loginTimestamp}
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-xl font-semibold text-slate-900">
+            Last 5 Transactions
+          </h3>
+          <Link
+            className="text-sm font-semibold text-indigo-600 underline-offset-4 hover:underline"
+            to="/transactions/history"
+          >
+            View all
+          </Link>
+        </div>
+        {historyError && (
+          <p className="text-sm font-medium text-rose-600">{historyError}</p>
+        )}
+        {recentTransactions.length === 0 ? (
+          <p className="text-sm text-slate-500">No transactions found.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Direction</th>
+                  <th className="px-4 py-3">Counterparty</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {recentTransactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td className="px-4 py-3 uppercase">
+                      {tx.direction || "--"}
+                    </td>
+                    <td className="px-4 py-3">{tx.counterparty || "--"}</td>
+                    <td className="px-4 py-3">₹ {tx.amount}</td>
+                    <td className="px-4 py-3 capitalize">{tx.status}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {new Date(tx.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-xl font-semibold text-slate-900">Quick Actions</h3>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { label: "Create Transaction", href: "/transactions/create" },
+            { label: "View Accounts", href: "/accounts" },
+            { label: "Profile & Certificate", href: "/profile" },
+            { label: "Security Center", href: "/security" },
+          ].map((action) => (
+            <Link
+              key={action.href}
+              to={action.href}
+              className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+            >
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default CustomerDashboard;

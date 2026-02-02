@@ -1,0 +1,46 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and local config files
+*.env
+*.env.*
+*.local
+
+# Logs and reports
+*.log
+*.out
+*.tmp
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Instance-specific runtime data
+backend/instance/
+instance/
+
+# Sensitive certificate material
+backend/certificates/
+certificates/
+
+# Frontend build artifacts
+frontend/node_modules/
+node_modules/
+frontend/build/
+dist/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
