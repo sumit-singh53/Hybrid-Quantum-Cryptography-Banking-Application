@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 from sqlalchemy import or_
 
@@ -102,7 +102,7 @@ class TransactionService:
     @staticmethod
     def _direction_for_customer(
         tx: Transaction, *, customer_id: str, account_number: str
-    ) -> str | None:
+    ) -> Optional[str]:
         if tx.created_by == customer_id:
             return "SENT"
         if tx.to_account == account_number:
@@ -234,7 +234,7 @@ class TransactionService:
         return tx.to_dict()
 
     @staticmethod
-    def reject_transaction(tx_id, approver, reason: str | None = None):
+    def reject_transaction(tx_id, approver, reason: Optional[str] = None):
         try:
             with db.session.begin():
                 tx = TransactionService._get_transaction(tx_id, for_update=True)

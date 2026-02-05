@@ -1,7 +1,9 @@
 import React from "react";
+import { formatRelativeTime } from "../../../utils/dateFormatter";
+import Pagination from "../../../components/common/Pagination";
 import "./SecurityEventFeed.css";
 
-const SecurityEventFeed = ({ events = [], onRefresh, sectionId }) => {
+const SecurityEventFeed = ({ events = [], onRefresh, sectionId, currentPage = 1, totalItems = 0, itemsPerPage = 10, onPageChange }) => {
   return (
     <div
       id={sectionId}
@@ -34,14 +36,29 @@ const SecurityEventFeed = ({ events = [], onRefresh, sectionId }) => {
             key={event.event_id}
             className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
           >
-            <strong className="text-sm text-white">{event.event_type}</strong>
-            <p className="mt-1 text-sm text-slate-400">
-              {event.metadata?.context || "--"}
-            </p>
-            <small className="text-xs text-slate-500">{event.timestamp}</small>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <strong className="text-sm text-white">{event.event_type}</strong>
+                <p className="mt-1 text-sm text-slate-400">
+                  {event.metadata?.context || "--"}
+                </p>
+              </div>
+              <span className="ml-4 text-xs text-slate-500 whitespace-nowrap">
+                {formatRelativeTime(event.timestamp)}
+              </span>
+            </div>
           </li>
         ))}
       </ul>
+
+      {onPageChange && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={onPageChange}
+        />
+      )}
     </div>
   );
 };

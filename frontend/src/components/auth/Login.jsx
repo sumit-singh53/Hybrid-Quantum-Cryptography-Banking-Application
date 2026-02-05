@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import bankVisual from "../../assets/images/bank.png";
 
-import Footer from "../common/Footer";
-
 const Login = () => {
   const navigate = useNavigate();
   const { loginWithCertificate } = useAuth();
@@ -207,7 +205,6 @@ const Login = () => {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   );
 };

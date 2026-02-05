@@ -63,13 +63,13 @@ class SecurityEventStore:
 
     @classmethod
     def query_events(
-        cls, *, event_type: Optional[str] = None, limit: int = 100
+        cls, *, event_type: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> List[Dict[str, Any]]:
         data = cls._load()
         if event_type:
             data = [entry for entry in data if entry.get("event_type") == event_type]
         data.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
-        return data[: max(limit, 0)]
+        return data[offset:offset + max(limit, 0)]
 
     @classmethod
     def count_events(cls, event_type: Optional[str] = None) -> int:

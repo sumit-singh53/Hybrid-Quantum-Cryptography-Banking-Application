@@ -73,19 +73,52 @@ const AuthenticatedLayout = ({ isAuthenticated }) => {
     }
   }
 
+  const isAdminPanel = role === 'system_admin';
+
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-cyan-50/20 to-white text-slate-900">
+    <div className={`relative flex min-h-screen flex-col text-slate-900 overflow-hidden ${
+      isAdminPanel 
+        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+        : 'bg-gradient-to-br from-slate-50 via-cyan-50/20 to-white'
+    }`}>
+      {/* Ambient Background Effects for Admin Panel */}
+      {isAdminPanel && (
+        <>
+          <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent pointer-events-none"></div>
+          <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent pointer-events-none"></div>
+          <div className="fixed left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none"></div>
+        </>
+      )}
+      
       <NavbarComponent />
-      <div className="flex-1">
+      <div className="relative flex-1 z-10">
         <div className="flex w-full flex-col gap-6 px-0 pb-8 pt-0 sm:px-4 sm:pt-0 lg:flex-row lg:items-start lg:gap-8 lg:pl-0 lg:pr-8 lg:pt-0">
           {isAuthenticated && <Sidebar />}
 
-          <main className="mt-4 flex-1 rounded-[32px] border border-slate-100 bg-white/90 p-4 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:mt-6 lg:p-8">
+          <main className={`mt-4 flex-1 rounded-[32px] border p-4 shadow-2xl backdrop-blur-xl lg:mt-6 lg:p-8 ${
+            isAdminPanel
+              ? 'border-slate-800/50 bg-slate-950/80 text-slate-100 shadow-indigo-500/10'
+              : 'border-slate-100 bg-white/90 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.08)]'
+          }`}>
             <Outlet />
           </main>
         </div>
       </div>
-      <Footer />
+      {role === 'manager' ? (
+        <footer className="relative z-10 w-full border-t border-slate-200/60 bg-white/80 backdrop-blur-sm py-4 mt-8">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center justify-between gap-3 text-sm text-slate-600 sm:flex-row">
+              <p>© {new Date().getFullYear()} PQ Banking. All rights reserved.</p>
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-medium text-slate-500">Secure Operations • Post-Quantum Protected</span>
+                <span className="text-xs text-slate-400">v1.0.0</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+      ) : (
+        <Footer />
+      )}
     </div>
   );
 };

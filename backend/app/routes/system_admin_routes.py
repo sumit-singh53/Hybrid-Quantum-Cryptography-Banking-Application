@@ -31,6 +31,14 @@ def certificate_summary():
     return jsonify(SystemAdminService.certificate_inventory())
 
 
+@system_admin_bp.route("/certificates/list", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def list_issued_certificates():
+    """Get list of all issued certificates from filesystem."""
+    certificates = SystemAdminService.list_issued_certificates()
+    return jsonify({"certificates": certificates, "total": len(certificates)})
+
+
 @system_admin_bp.route("/certificates/issue", methods=["POST"])
 @system_admin_guard(allowed_actions=["ISSUE_CERT"])
 def issue_system_admin_certificate():
@@ -151,8 +159,11 @@ def kill_sessions():
 @system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
 def global_audit_feed():
     limit = int(request.args.get("limit", 100))
-    feed = SystemAdminService.global_audit_feed(limit=limit)
-    return jsonify(feed)
+    page = int(request.args.get("page", 1))
+    offset = (page - 1) * limit if page > 1 else 0
+    feed = SystemAdminService.global_audit_feed(limit=limit, offset=offset)
+    total = len(feed)  # For now, return total from current result
+    return jsonify({"audits": feed, "total": total, "page": page, "limit": limit})
 
 
 @system_admin_bp.route("/security/events", methods=["GET"])
@@ -160,8 +171,11 @@ def global_audit_feed():
 def security_events():
     event_type = request.args.get("event_type")
     limit = int(request.args.get("limit", 50))
-    events = SystemAdminService.list_security_events(event_type=event_type, limit=limit)
-    return jsonify(events)
+    page = int(request.args.get("page", 1))
+    offset = (page - 1) * limit if page > 1 else 0
+    events = SystemAdminService.list_security_events(event_type=event_type, limit=limit, offset=offset)
+    total = len(events)  # For now, return total from current result
+    return jsonify({"events": events, "total": total, "page": page, "limit": limit})
 
 
 @system_admin_bp.route("/roles", methods=["GET"])

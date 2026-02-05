@@ -62,21 +62,63 @@ const ManagerReports = () => {
       </div>
 
       {reports && (
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Object.entries(reports.volume_summary || {}).map(([key, value]) => (
-            <div
-              key={key}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {key}
-              </p>
-              <h3 className="mt-2 text-3xl font-semibold text-slate-900">
-                {value}
-              </h3>
-            </div>
-          ))}
-        </section>
+        <>
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(reports.volume_summary || {}).map(([key, value]) => (
+              <div
+                key={key}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {key}
+                </p>
+                <h3 className="mt-2 text-3xl font-semibold text-slate-900">
+                  {value}
+                </h3>
+              </div>
+            ))}
+          </section>
+
+          {reports.performance_metrics && (
+            <section className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
+              <h3 className="text-xl font-semibold text-indigo-900">Performance Metrics (24h)</h3>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
+                    Total Processed
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold text-indigo-900">
+                    {reports.performance_metrics.total_processed_24h || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
+                    Approved
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold text-emerald-700">
+                    {reports.performance_metrics.approved_24h || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
+                    Avg Approval Time
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold text-indigo-900">
+                    {reports.performance_metrics.avg_approval_time_minutes || 0}m
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
+                    Approval Rate
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold text-indigo-900">
+                    {reports.performance_metrics.approval_rate || 0}%
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {reports?.branch_health?.length > 0 && (

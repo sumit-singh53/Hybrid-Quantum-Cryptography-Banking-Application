@@ -1,0 +1,13 @@
+{
+  "name": "hybrid-quantum-cryptography-banking-app",
+  "version": "1.0.0",
+  "scripts": {
+    "backend": "cd backend && . venv/bin/activate && python run.py",
+    "frontend": "cd frontend && npm start",
+    "dev": "concurrently --kill-others-on-fail \"npm run backend\" \"npm run frontend\"",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -29,11 +29,25 @@ const SystemAdminUserInventory = () => {
   const [userForm, setUserForm] = useState(() => ({ ...INITIAL_USER_FORM }));
   const [editingUserId, setEditingUserId] = useState(null);
   const [userSubmitting, setUserSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
   const managedRoleParam = useMemo(
     () => MANAGED_ROLE_OPTIONS.map((option) => option.value).join(","),
     [],
   );
+
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const username = (user.username || "").toLowerCase();
+      const fullName = (user.full_name || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+      const role = (user.role || "").toLowerCase();
+      return username.includes(query) || fullName.includes(query) || email.includes(query) || role.includes(query);
+    });
+  }, [users, search]);
 
   const loadSummary = useCallback(async () => {
     setSummaryError(null);
@@ -70,14 +84,6 @@ const SystemAdminUserInventory = () => {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
-
-  const certificateRows = useMemo(() => {
-    const breakdown = summary?.by_role || {};
-    return Object.entries(breakdown).map(([role, count]) => ({
-      role,
-      count,
-    }));
-  }, [summary]);
 
   const resetUserForm = () => {
     setUserForm({ ...INITIAL_USER_FORM });
@@ -160,20 +166,16 @@ const SystemAdminUserInventory = () => {
   };
 
   return (
-    <section className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
-      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-8 shadow-2xl">
+    <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
+      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-6 shadow-2xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+          <div className="flex-1">
+            <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
               User inventory
             </p>
-            <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
-              Certificate footprint across privileged roles
+            <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+              Manage users & certificates
             </h1>
-            <p className="mt-3 max-w-3xl text-base text-slate-200/80">
-              Inspect issued certificates by role and curate just-in-time
-              control notes for every privileged operator.
-            </p>
             {summaryError && (
               <p className="mt-3 text-sm font-medium text-rose-200">
                 ⚠️ {summaryError}
@@ -210,53 +212,23 @@ const SystemAdminUserInventory = () => {
 
       <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
         <h3 className="text-xl font-semibold text-slate-100">
-          Inventory snapshot
-        </h3>
-        <p className="text-sm text-slate-400">
-          Breakdown of issued certs per role.
-        </p>
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-900/80 text-left text-sm text-slate-100">
-            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Certificates</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-900/60">
-              {certificateRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={2}
-                    className="px-4 py-5 text-center text-slate-500"
-                  >
-                    No certificates have been issued yet.
-                  </td>
-                </tr>
-              ) : (
-                certificateRows.map((row) => (
-                  <tr key={row.role}>
-                    <td className="px-4 py-3 uppercase tracking-wide text-slate-300">
-                      {row.role}
-                    </td>
-                    <td className="px-4 py-3 text-lg font-semibold text-white">
-                      {row.count}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
-        <h3 className="text-xl font-semibold text-slate-100">
           Manage privileged users (CRUD)
         </h3>
         <p className="text-sm text-slate-400">
           Provision and sunset customer, auditor clerk, and manager identities.
         </p>
+
+        {/* Search Bar */}
+        <div className="mt-4">
+          <input
+            type="text"
+            placeholder="Search by username, name, email, or role..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          />
+        </div>
+
         {(usersError || userBanner) && (
           <div className="mt-4 space-y-2">
             {usersError && (
@@ -394,14 +366,14 @@ const SystemAdminUserInventory = () => {
                     Loading users…
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-5 text-center text-slate-500">
-                    No managed users found.
+                    {search ? "No users match your search." : "No managed users found."}
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                filteredUsers.map((user) => (
                   <tr key={user.id}>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold text-white">

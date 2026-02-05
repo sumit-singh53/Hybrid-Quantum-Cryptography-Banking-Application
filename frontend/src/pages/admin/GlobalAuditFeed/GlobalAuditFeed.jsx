@@ -1,4 +1,6 @@
 import React from "react";
+import { formatRelativeTime } from "../../../utils/dateFormatter";
+import Pagination from "../../../components/common/Pagination";
 import "./GlobalAuditFeed.css";
 
 const formatRow = (entry) => {
@@ -7,7 +9,7 @@ const formatRow = (entry) => {
   return `${action} · ${actor}`;
 };
 
-const GlobalAuditFeed = ({ entries = [], onRefresh, sectionId }) => {
+const GlobalAuditFeed = ({ entries = [], onRefresh, sectionId, currentPage = 1, totalItems = 0, itemsPerPage = 15, onPageChange }) => {
   return (
     <div
       id={sectionId}
@@ -40,14 +42,29 @@ const GlobalAuditFeed = ({ entries = [], onRefresh, sectionId }) => {
             key={entry.event_id || `${entry.certificate_id}-${entry.timestamp}`}
             className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
           >
-            <strong className="text-sm text-white">{formatRow(entry)}</strong>
-            <p className="mt-1 text-sm text-slate-400">
-              {(entry.method || "").toUpperCase()} {entry.path || ""}
-            </p>
-            <small className="text-xs text-slate-500">{entry.timestamp}</small>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <strong className="text-sm text-white">{formatRow(entry)}</strong>
+                <p className="mt-1 text-sm text-slate-400">
+                  {(entry.method || "").toUpperCase()} {entry.path || ""}
+                </p>
+              </div>
+              <span className="ml-4 text-xs text-slate-500 whitespace-nowrap">
+                {formatRelativeTime(entry.timestamp)}
+              </span>
+            </div>
           </li>
         ))}
       </ul>
+
+      {onPageChange && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={onPageChange}
+        />
+      )}
     </div>
   );
 };

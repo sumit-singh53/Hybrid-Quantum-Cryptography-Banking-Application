@@ -1,9 +1,10 @@
 import hashlib
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
 
 from app.models.transaction_model import Transaction, TransactionStatus
 from app.security.certificate_vault import CertificateVault
@@ -106,6 +107,85 @@ class ManagerService:
         return len(crl.get("revoked", []))
 
     @classmethod
+    def _count_expiring_certs(cls, days_threshold: int = 30) -> int:
+        """Count certificates expiring within threshold days."""
+        payloads = cls._certificate_payloads()
+        count = 0
+        cutoff = cls._now() + timedelta(days=days_threshold)
+        
+        for payload in payloads:
+            expiry_str = payload.get("expires_at")
+            if expiry_str:
+                try:
+                    expiry = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
+                    if expiry <= cutoff:
+                        count += 1
+                except (ValueError, AttributeError):
+                    continue
+        return count
+    
+    @classmethod
+    def _next_expiry_date(cls) -> str:
+        """Find the earliest certificate expiry date."""
+        payloads = cls._certificate_payloads()
+        earliest = None
+        
+        for payload in payloads:
+            expiry_str = payload.get("expires_at")
+            if expiry_str:
+                try:
+                    expiry = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
+                    if earliest is None or expiry < earliest:
+                        earliest = expiry
+                except (ValueError, AttributeError):
+                    continue
+        
+        if earliest:
+            days_left = (earliest - cls._now()).days
+            if days_left < 0:
+                return "Expired"
+            elif days_left == 0:
+                return "Today"
+            elif days_left == 1:
+                return "Tomorrow"
+            else:
+                return f"{days_left} days"
+        return "--"
+    
+    @classmethod
+    def _check_velocity_risk(cls, tx: Transaction) -> Dict[str, Any]:
+        """Check for suspicious transaction velocity."""
+        cutoff_time = cls._now() - timedelta(hours=24)
+        recent_txs = Transaction.query.filter(
+            Transaction.created_by == tx.created_by,
+            Transaction.created_at >= cutoff_time
+        ).all()
+        
+        count = len(recent_txs)
+        total_amount = sum(float(t.amount) for t in recent_txs)
+        
+        is_suspicious = count > 5 or total_amount > 500000
+        
+        return {
+            "count_24h": count,
+            "volume_24h": total_amount,
+            "is_suspicious": is_suspicious
+        }
+    
+    @classmethod
+    def _time_of_day_risk(cls, created_at: datetime) -> str:
+        """Assess risk based on transaction time."""
+        hour = created_at.hour
+        # High risk: 11pm - 5am
+        if hour >= 23 or hour < 5:
+            return "high"
+        # Medium risk: 6am - 8am, 8pm - 11pm
+        elif hour < 8 or hour >= 20:
+            return "medium"
+        # Normal: business hours
+        return "normal"
+    
+    @classmethod
     def _branch_health(cls) -> List[Dict[str, Any]]:
         pending = cls.pending_transactions()
         aggregates: Dict[str, Dict[str, Any]] = {}
@@ -142,13 +222,64 @@ class ManagerService:
     @classmethod
     def dashboard_snapshot(cls) -> Dict[str, Any]:
         pending = cls.pending_transactions()
+        high_value = cls.high_value_alerts()
+        
+        # Generate risk feed from current state
+        risk_feed = []
+        if len(high_value) > 0:
+            risk_feed.append({
+                "id": "high-value-alert",
+                "title": f"{len(high_value)} High-Value Transactions Pending",
+                "detail": f"Total value: ₹{sum(float(t.get('amount', 0)) for t in high_value):,.0f}"
+            })
+        
+        stale_count = len([p for p in pending if p.get("risk", {}).get("stale", False)])
+        if stale_count > 0:
+            risk_feed.append({
+                "id": "stale-alert",
+                "title": f"{stale_count} Stale Transactions",
+                "detail": "Pending for over 12 hours - require attention"
+            })
+        
+        critical_count = len([p for p in pending if p.get("risk", {}).get("level") == "critical"])
+        if critical_count > 0:
+            risk_feed.append({
+                "id": "critical-risk",
+                "title": "Critical Risk Transactions Detected",
+                "detail": f"{critical_count} transactions require immediate review"
+            })
+        
+        # Calculate oldest pending
+        oldest_pending = "Queue is fresh"
+        if pending:
+            oldest_age = max(p.get("age_minutes", 0) for p in pending)
+            if oldest_age >= 60:
+                oldest_pending = f"Oldest: {oldest_age // 60}h {oldest_age % 60}m ago"
+            elif oldest_age > 0:
+                oldest_pending = f"Oldest: {oldest_age:.0f}m ago"
+        
+        # Count high-risk transactions
+        high_risk_count = len([p for p in pending if p.get("risk", {}).get("is_high_value", False)]) + critical_count
+        
+        # Find highest risk branch
+        branch_health = cls._branch_health()
+        highest_risk_branch = "No alerts"
+        if branch_health:
+            critical_branches = [b for b in branch_health if b.get("risk_level") == "critical"]
+            if critical_branches:
+                highest_risk_branch = critical_branches[0].get("label", "Unknown")
+        
         return {
-            "pending_count": len(pending),
-            "pending_preview": pending[:5],
-            "high_value_alerts": cls.high_value_alerts(),
-            "revoked_certificates": cls.revoked_certificate_count(),
-            "branch_health": cls._branch_health(),
-            "recent_escalations": cls.list_escalations(limit=5),
+            "pending_approvals": pending[:10],
+            "high_risk_count": high_risk_count,
+            "highest_risk_branch": highest_risk_branch,
+            "expiring_certificates": cls._count_expiring_certs(),
+            "next_expiry": cls._next_expiry_date(),
+            "oldest_pending": oldest_pending,
+            "branch_health": branch_health,
+            "risk_feed": risk_feed,
+            "recent_actions": cls._get_recent_manager_actions(),
+            "performance_metrics": cls._get_performance_metrics(),
         }
 
     @classmethod
@@ -304,6 +435,55 @@ class ManagerService:
         return list(reversed(decorated))
 
     @classmethod
+    def _get_recent_manager_actions(cls, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get recent manager approval/rejection actions."""
+        # Get recently processed transactions
+        recent = Transaction.query.filter(
+            Transaction.status.in_([TransactionStatus.APPROVED, TransactionStatus.REJECTED])
+        ).order_by(Transaction.updated_at.desc()).limit(limit).all()
+        
+        actions = []
+        for tx in recent:
+            actions.append({
+                "transaction_id": tx.id,
+                "action": tx.status.value.lower(),
+                "amount": float(tx.amount),
+                "timestamp": tx.updated_at.isoformat() if tx.updated_at else tx.created_at.isoformat(),
+                "from_account": tx.from_account,
+                "to_account": tx.to_account
+            })
+        
+        return actions
+    
+    @classmethod
+    def _get_performance_metrics(cls) -> Dict[str, Any]:
+        """Calculate manager performance metrics."""
+        # Get last 24 hours of transactions
+        cutoff = cls._now() - timedelta(hours=24)
+        recent = Transaction.query.filter(Transaction.created_at >= cutoff).all()
+        
+        total_processed = sum(1 for tx in recent if tx.status in [TransactionStatus.APPROVED, TransactionStatus.REJECTED])
+        approved_count = sum(1 for tx in recent if tx.status == TransactionStatus.APPROVED)
+        rejected_count = sum(1 for tx in recent if tx.status == TransactionStatus.REJECTED)
+        
+        # Calculate average approval time
+        approval_times = []
+        for tx in recent:
+            if tx.status in [TransactionStatus.APPROVED, TransactionStatus.REJECTED] and tx.updated_at:
+                time_diff = (tx.updated_at - tx.created_at).total_seconds() / 60  # in minutes
+                approval_times.append(time_diff)
+        
+        avg_approval_time = round(sum(approval_times) / len(approval_times), 1) if approval_times else 0
+        
+        return {
+            "total_processed_24h": total_processed,
+            "approved_24h": approved_count,
+            "rejected_24h": rejected_count,
+            "avg_approval_time_minutes": avg_approval_time,
+            "approval_rate": round((approved_count / total_processed * 100), 1) if total_processed > 0 else 0
+        }
+    
+    @classmethod
     def manager_reports(cls) -> Dict[str, Any]:
         total = Transaction.query.count()
         pending = Transaction.query.filter_by(status="PENDING").count()
@@ -319,4 +499,5 @@ class ManagerService:
             },
             "branch_health": branch_health,
             "escalations": cls.list_escalations(limit=10),
+            "performance_metrics": cls._get_performance_metrics(),
         }

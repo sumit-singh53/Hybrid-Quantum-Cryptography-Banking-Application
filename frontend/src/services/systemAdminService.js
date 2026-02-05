@@ -12,6 +12,11 @@ const getCertificateSummary = async () => {
     return response.data;
 };
 
+const listIssuedCertificates = async () => {
+    const response = await api.get(`${endpoint}/certificates/list`);
+    return response.data;
+};
+
 const issueCertificate = async (payload) => {
     const response = await api.post(`${endpoint}/certificates/issue`, payload);
     return response.data;
@@ -90,6 +95,7 @@ const deleteUser = async (userId) => {
 const systemAdminService = {
     getOverview,
     getCertificateSummary,
+    listIssuedCertificates,
     issueCertificate,
     getCRL,
     revokeCertificate,

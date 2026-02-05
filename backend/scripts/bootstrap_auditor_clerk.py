@@ -21,6 +21,7 @@ import base64
 import os
 import sys
 from pathlib import Path
+from typing import Optional, Tuple
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -40,7 +41,7 @@ from app.services.certificate_service import CertificateService  # noqa: E402
 ROLE = "auditor_clerk"
 
 
-def _generate_rsa_spki() -> tuple[bytes, str]:
+def _generate_rsa_spki() -> Tuple[bytes, str]:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -55,7 +56,7 @@ def _generate_rsa_spki() -> tuple[bytes, str]:
     return private_pem, public_b64
 
 
-def _resolve_pq_key(value: str | None) -> str | None:
+def _resolve_pq_key(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
     candidate = Path(value).expanduser()

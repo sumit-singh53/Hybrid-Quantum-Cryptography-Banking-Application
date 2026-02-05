@@ -128,9 +128,9 @@ class SystemAdminService:
 
     @staticmethod
     def list_security_events(
-        *, event_type: Optional[str] = None, limit: int = 100
+        *, event_type: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> List[Dict[str, Any]]:
-        return SecurityEventStore.query_events(event_type=event_type, limit=limit)
+        return SecurityEventStore.query_events(event_type=event_type, limit=limit, offset=offset)
 
     @staticmethod
     def rotate_authority_keys() -> Dict[str, Any]:
@@ -153,10 +153,71 @@ class SystemAdminService:
         return {"terminated_sessions": killed}
 
     @staticmethod
-    def global_audit_feed(limit: int = 200) -> List[Dict[str, Any]]:
+    def global_audit_feed(limit: int = 200, offset: int = 0) -> List[Dict[str, Any]]:
         entries = RequestAuditStore.query_all()
         entries.sort(key=lambda row: row.get("timestamp") or "")
-        return list(reversed(entries[-limit:]))
+        reversed_entries = list(reversed(entries))
+        return reversed_entries[offset:offset + limit]
+
+    @staticmethod
+    def list_issued_certificates() -> List[Dict[str, Any]]:
+        """List all certificates issued and stored in the filesystem."""
+        from pathlib import Path
+        from app.services.certificate_service import CertificateService
+        from app.security.certificate_vault import CertificateVault
+        import os
+        
+        certificates = []
+        cert_base = CertificateService.CERT_BASE
+        
+        if not cert_base.exists():
+            return certificates
+        
+        # Scan all role directories
+        for role_dir in cert_base.iterdir():
+            if not role_dir.is_dir():
+                continue
+            
+            role_name = role_dir.name
+            
+            # Scan all .pem files in role directory
+            for cert_file in role_dir.glob("*.pem"):
+                try:
+                    cert_content = CertificateVault.load(cert_file)
+                    # Parse certificate content
+                    cert_data = {}
+                    for line in cert_content.strip().split("\n"):
+                        if "=" in line:
+                            key, value = line.split("=", 1)
+                            cert_data[key] = value
+                    
+                    user_id = cert_data.get("user_id", cert_file.stem)
+                    full_name = cert_data.get("owner", "Unknown")
+                    issued_at = cert_data.get("issued_at", "")
+                    valid_to = cert_data.get("valid_to", "")
+                    is_revoked = cert_data.get("is_revoked", "false").lower() == "true"
+                    
+                    # Get file stats for fallback timestamp
+                    file_stat = os.stat(cert_file)
+                    issued_timestamp = issued_at or datetime.fromtimestamp(file_stat.st_ctime).isoformat() + "Z"
+                    
+                    certificates.append({
+                        "id": f"{role_name}_{user_id}",
+                        "userId": user_id,
+                        "fullName": full_name,
+                        "role": role_name,
+                        "issuedAt": issued_timestamp,
+                        "validTo": valid_to,
+                        "certificatePath": str(cert_file.relative_to(cert_base.parent)),
+                        "isRevoked": is_revoked,
+                    })
+                except Exception:
+                    # Skip malformed certificates
+                    continue
+        
+        # Sort by issued date (newest first)
+        certificates.sort(key=lambda x: x.get("issuedAt", ""), reverse=True)
+        return certificates
 
     # =========================================
     # Role administration

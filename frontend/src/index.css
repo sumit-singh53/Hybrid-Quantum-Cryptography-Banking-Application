@@ -9,12 +9,330 @@
   box-sizing: border-box;
 }
 
-
-
 body {
   margin     : 0;
   padding    : 0;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark Mode Styles - Comprehensive Implementation */
+.dark-mode {
+  min-height: 100vh;
+}
+
+.dark-mode body {
+  background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a) !important;
+  color: #f1f5f9 !important;
+}
+
+/* Header and Navigation */
+.dark-mode header {
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.dark-mode header * {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode header .text-cyan-600 {
+  color: #22d3ee !important;
+}
+
+.dark-mode aside {
+  background: linear-gradient(to bottom right, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.dark-mode aside * {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode main {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #f1f5f9 !important;
+}
+
+/* Text Colors - Force Override */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6,
+.dark-mode p,
+.dark-mode span,
+.dark-mode div,
+.dark-mode .text-slate-950,
+.dark-mode .text-slate-900,
+.dark-mode .text-slate-800,
+.dark-mode .text-slate-700 {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Background Colors */
+.dark-mode .bg-white,
+.dark-mode .bg-gradient-to-br,
+.dark-mode .bg-gradient-to-r {
+  background: rgba(30, 41, 59, 0.9) !important;
+}
+
+.dark-mode .bg-slate-50,
+.dark-mode .bg-slate-100 {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+/* Colored Backgrounds - Keep Slightly Visible */
+.dark-mode .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.dark-mode .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+
+.dark-mode .bg-amber-50 {
+  background-color: rgba(251, 191, 36, 0.15) !important;
+}
+
+.dark-mode .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+.dark-mode .bg-cyan-50 {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Border Colors */
+.dark-mode .border-slate-200,
+.dark-mode .border-slate-100,
+.dark-mode .border-white {
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+.dark-mode .border-slate-300 {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+.dark-mode .border-emerald-200 {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.dark-mode .border-rose-200,
+.dark-mode .border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+.dark-mode .border-indigo-200 {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Hover States */
+.dark-mode .hover\:bg-slate-50:hover,
+.dark-mode .hover\:bg-slate-100:hover {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+.dark-mode .hover\:bg-indigo-50:hover {
+  background-color: rgba(99, 102, 241, 0.25) !important;
+}
+
+.dark-mode .hover\:bg-rose-50:hover {
+  background-color: rgba(244, 63, 94, 0.25) !important;
+}
+
+/* Table Styles */
+.dark-mode table {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.dark-mode table thead {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+.dark-mode table thead th {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode table tbody tr {
+  border-bottom-color: rgba(148, 163, 184, 0.15) !important;
+}
+
+.dark-mode table tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+.dark-mode table tbody td {
+  color: #f1f5f9 !important;
+}
+
+/* Accent Colors - Keep Vibrant */
+.dark-mode .text-emerald-600,
+.dark-mode .text-emerald-700,
+.dark-mode .text-emerald-900 {
+  color: #10b981 !important;
+}
+
+.dark-mode .text-rose-600,
+.dark-mode .text-rose-700,
+.dark-mode .text-rose-900 {
+  color: #f43f5e !important;
+}
+
+.dark-mode .text-amber-600,
+.dark-mode .text-amber-700,
+.dark-mode .text-amber-900 {
+  color: #fbbf24 !important;
+}
+
+.dark-mode .text-indigo-600,
+.dark-mode .text-indigo-700,
+.dark-mode .text-indigo-900 {
+  color: #818cf8 !important;
+}
+
+.dark-mode .text-cyan-600,
+.dark-mode .text-cyan-700 {
+  color: #22d3ee !important;
+}
+
+/* Input Fields */
+.dark-mode input,
+.dark-mode textarea,
+.dark-mode select {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark-mode input:focus,
+.dark-mode textarea:focus,
+.dark-mode select:focus {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* Buttons */
+.dark-mode button {
+  color: inherit;
+}
+
+.dark-mode .bg-emerald-600,
+.dark-mode .bg-emerald-500 {
+  background-color: #10b981 !important;
+}
+
+.dark-mode .bg-rose-600 {
+  background-color: #f43f5e !important;
+}
+
+.dark-mode .bg-indigo-600 {
+  background-color: #6366f1 !important;
+}
+
+/* Divide Colors */
+.dark-mode .divide-slate-100 > * + *,
+.dark-mode .divide-slate-200 > * + * {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* Cards and Panels */
+.dark-mode article,
+.dark-mode section > div {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* Modal Overlays */
+.dark-mode .bg-black {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Dropdown Menus */
+.dark-mode .absolute {
+  background-color: rgba(30, 41, 59, 0.98) !important;
+}
+
+/* Shadow Fix for Dark Mode */
+.dark-mode .shadow-xl,
+.dark-mode .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Logout Page Specific */
+.dark-mode .min-h-screen {
+  background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a) !important;
+}
+
+/* Login Page Dark Mode */
+.dark-mode .bg-gradient-to-br.from-white {
+  background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a) !important;
+}
+
+.dark-mode .bg-gradient-to-br.from-blue-600 {
+  background: linear-gradient(to bottom right, #1e40af, #3b82f6, #1e40af) !important;
+}
+
+.dark-mode .text-gray-800,
+.dark-mode .text-gray-700 {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .bg-gray-50,
+.dark-mode .bg-gray-100 {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.dark-mode .border-gray-300 {
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+.dark-mode .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark-mode .text-blue-900,
+.dark-mode .text-blue-700 {
+  color: #60a5fa !important;
+}
+
+.dark-mode .border-blue-200 {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+.dark-mode .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+.dark-mode .text-red-800 {
+  color: #fca5a5 !important;
+}
+
+.dark-mode .border-red-200 {
+  border-color: rgba(239, 68, 68, 0.4) !important;
 }
 
 .heartbeat-dot {
@@ -46,4 +364,22 @@ body {
     transform : scale(1);
     box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
   }
+}
+
+/* ============================================
+   Manager Minimal Footer Dark Mode
+   ============================================ */
+.dark-mode footer {
+  background: rgba(17, 24, 39, 0.9) !important;
+  border-top-color: rgba(75, 85, 99, 0.4) !important;
+  backdrop-filter: blur(12px);
+}
+
+.dark-mode footer p,
+.dark-mode footer span {
+  color: rgb(156, 163, 175) !important;
+}
+
+.dark-mode footer .text-slate-400 {
+  color: rgb(107, 114, 128) !important;
 }

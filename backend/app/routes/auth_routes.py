@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 from io import BytesIO
 from flask import Blueprint, request, jsonify, send_file, current_app
+from sqlalchemy import func
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.services.certificate_service import CertificateService
@@ -31,6 +32,8 @@ from app.security.device_binding_store import DeviceBindingStore
 from app.security.accountability_store import AccountabilityStore
 from app.security.kyber_crystal import KyberCrystal
 from app.models.customer_model import Customer, CustomerStatus
+from app.models.user_model import User
+from app.models.role_model import Role
 from app.config.database import db
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -160,6 +163,43 @@ def _ensure_customer_profile(*, user_id: str, full_name: str) -> Customer:
     return profile
 
 
+def _ensure_user_record(*, user_id: str, username: str, full_name: str, email: str, role_name: str = "customer") -> User:
+    """Create or update User record for admin panel visibility."""
+    # Get or create the role
+    role = Role.query.filter(func.lower(Role.name) == role_name.lower()).first()
+    if not role:
+        role = Role(name=role_name)
+        db.session.add(role)
+        db.session.flush()
+    
+    # Check if user already exists by user_id (stored as certificate_id)
+    # First try to find by username
+    user = User.query.filter_by(username=username).first()
+    
+    # If not found by username, try by old UUID username format
+    if not user:
+        user = User.query.filter_by(username=user_id).first()
+    
+    if user:
+        user.username = username  # Update to proper username if it was UUID
+        user.full_name = full_name
+        user.email = email
+        user.role_id = role.id
+        user.is_active = True
+    else:
+        user = User(
+            username=username,
+            full_name=full_name,
+            email=email,
+            role_id=role.id,
+            is_active=True
+        )
+        db.session.add(user)
+    
+    db.session.commit()
+    return user
+
+
 # =========================================================
 # CUSTOMER REGISTRATION (NO CERTIFICATE UPLOAD)
 # =========================================================
@@ -198,6 +238,8 @@ def register_customer():
         return jsonify({"message": "Device secret must be at least 6 characters"}), 400
 
     user_id = str(uuid.uuid4())
+    # Generate username from email (username part before @)
+    username = email.split('@')[0] if '@' in email else email[:50]
     device_secret = requested_device_secret or secrets.token_urlsafe(32)
 
     try:
@@ -234,6 +276,8 @@ def register_customer():
 
     try:
         profile = _ensure_customer_profile(user_id=user_id, full_name=full_name)
+        # Also create User record for admin panel visibility
+        _ensure_user_record(user_id=user_id, username=username, full_name=full_name, email=email, role_name="customer")
     except Exception as exc:  # pylint: disable=broad-except
         db.session.rollback()
         current_app.logger.error("Unable to provision customer account: %s", exc)

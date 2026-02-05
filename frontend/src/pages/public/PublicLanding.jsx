@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import PublicHeader from "../../components/public/PublicHeader";
-import Footer from "../../components/common/Footer";
 
 const featureTiles = [
   {
@@ -221,7 +220,6 @@ const PublicLanding = () => {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   );
 };

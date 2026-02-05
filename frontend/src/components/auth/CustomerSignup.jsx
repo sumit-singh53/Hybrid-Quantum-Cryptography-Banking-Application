@@ -7,8 +7,6 @@ import {
   generateClientKeyPair,
 } from "../../utils/platformKeystore";
 
-import Footer from "../common/Footer";
-
 const INITIAL_FORM = {
   full_name: "",
   email: "",

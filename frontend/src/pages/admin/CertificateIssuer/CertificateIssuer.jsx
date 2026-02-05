@@ -132,9 +132,34 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
     }
   }, []);
 
+  const loadExistingCertificates = useCallback(async () => {
+    try {
+      const response = await systemAdminService.listIssuedCertificates();
+      const existingCerts = response?.certificates || [];
+      
+      // Convert to bundle format (without zipBlob since we can't recreate that)
+      const convertedBundles = existingCerts.map(cert => ({
+        id: cert.id,
+        userId: cert.userId,
+        fullName: cert.fullName,
+        role: cert.role,
+        issuedAt: cert.issuedAt,
+        certificatePath: cert.certificatePath,
+        isRevoked: cert.isRevoked,
+        fromServer: true, // Mark as server-loaded (no download available)
+      }));
+      
+      setBundles(convertedBundles);
+    } catch (error) {
+      // Silently fail - existing certificates are optional
+      console.error("Failed to load existing certificates:", error);
+    }
+  }, []);
+
   useEffect(() => {
     loadUsers();
-  }, [loadUsers]);
+    loadExistingCertificates();
+  }, [loadUsers, loadExistingCertificates]);
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -264,6 +289,24 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
 
   return (
     <div id={sectionId} className="space-y-6">
+      {/* Information Banner */}
+      <div className="rounded-3xl border border-indigo-500/30 bg-indigo-500/10 p-5 shadow-lg">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
+            <svg className="h-5 w-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-indigo-200">Certificate Authentication</h4>
+            <p className="mt-1 text-xs leading-relaxed text-slate-300">
+              Users authenticate using their downloaded certificate bundle (ZIP file containing .pem certificate, RSA private key, ML-KEM private key, and device secret). 
+              The "Escrow bundles" table below shows all issued certificates. Note that ZIP bundles are only downloadable immediately after issuance - previously issued certificates are listed for reference only.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -294,7 +337,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
               type="button"
               onClick={issueForUsers}
               disabled={issuing || selectedUserIds.length === 0}
-              className="rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:border-indigo-200 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-indigo-400 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {issuing ? issuingStatus || "Issuing…" : `Issue for ${selectedUserIds.length || 0} user${selectedUserIds.length === 1 ? "" : "s"}`}
             </button>
@@ -302,7 +345,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
               type="button"
               onClick={loadUsers}
               disabled={usersLoading}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30 disabled:opacity-60"
+              className="rounded-xl border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-600 disabled:opacity-60"
             >
               {usersLoading ? "Syncing…" : "Refresh users"}
             </button>
@@ -420,6 +463,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Issued</th>
                   <th className="px-4 py-3">Certificate</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -429,6 +473,13 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
                     <td className="px-4 py-3">
                       <div className="font-semibold text-white">{bundle.fullName}</div>
                       <div className="text-xs text-slate-400">{bundle.userId}</div>
+                      {bundle.role && (
+                        <div className="mt-1">
+                          <span className="inline-block rounded-full bg-slate-700/50 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-300">
+                            {bundle.role}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-300">
                       {new Date(bundle.issuedAt).toLocaleString()}
@@ -448,13 +499,30 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => handleBundleDownload(bundle)}
-                        className="rounded-xl border border-cyan-400/40 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-500/10"
-                      >
-                        Download again
-                      </button>
+                      {bundle.isRevoked ? (
+                        <span className="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-200">
+                          Revoked
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {bundle.fromServer ? (
+                        <span className="text-xs text-slate-500 italic">
+                          Previously issued (ZIP not available)
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleBundleDownload(bundle)}
+                          className="rounded-xl border border-cyan-500 bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-cyan-500"
+                        >
+                          Download again
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

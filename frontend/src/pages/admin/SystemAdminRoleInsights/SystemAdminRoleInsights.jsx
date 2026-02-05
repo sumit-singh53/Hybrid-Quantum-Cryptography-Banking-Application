@@ -117,18 +117,18 @@ const SystemAdminRoleInsights = () => {
   };
 
   return (
-    <section className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
+    <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
+      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-6 shadow-2xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="text-xl font-semibold text-slate-100">
-              Role registry (live CRUD)
-            </h3>
-            <p className="text-sm text-slate-400">
-              Manage the canonical list of roles backing hybrid certificates.
+          <div className="flex-1">
+            <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Role insights
             </p>
+            <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+              Manage system roles
+            </h1>
             {rolesError && (
-              <p className="mt-2 text-sm font-medium text-rose-300">
+              <p className="mt-3 text-sm font-medium text-rose-200">
                 ⚠️ {rolesError}
               </p>
             )}
@@ -136,7 +136,7 @@ const SystemAdminRoleInsights = () => {
           <button
             onClick={loadRoles}
             disabled={rolesLoading}
-            className="h-fit rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-fit rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {rolesLoading ? "Syncing" : "Refresh roles"}
           </button>

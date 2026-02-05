@@ -12,15 +12,33 @@ const SystemAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Pagination state
+  const [securityEventsPage, setSecurityEventsPage] = useState(1);
+  const [securityEventsTotal, setSecurityEventsTotal] = useState(0);
+  const [auditFeedPage, setAuditFeedPage] = useState(1);
+  const [auditFeedTotal, setAuditFeedTotal] = useState(0);
+  const eventsPerPage = 10;
+  const auditsPerPage = 15;
 
-  const loadSecurityEvents = useCallback(async () => {
-    const events = await systemAdminService.getSecurityEvents({ limit: 40 });
-    setSecurityEvents(events);
+  const loadSecurityEvents = useCallback(async (page = 1) => {
+    const response = await systemAdminService.getSecurityEvents({ 
+      limit: eventsPerPage,
+      page: page 
+    });
+    setSecurityEvents(response.events || response);
+    setSecurityEventsTotal(response.total || (response.events || response).length);
+    setSecurityEventsPage(page);
   }, []);
 
-  const loadAuditFeed = useCallback(async () => {
-    const audits = await systemAdminService.getGlobalAuditFeed({ limit: 60 });
-    setAuditFeed(audits);
+  const loadAuditFeed = useCallback(async (page = 1) => {
+    const response = await systemAdminService.getGlobalAuditFeed({ 
+      limit: auditsPerPage,
+      page: page 
+    });
+    setAuditFeed(response.audits || response);
+    setAuditFeedTotal(response.total || (response.audits || response).length);
+    setAuditFeedPage(page);
   }, []);
 
   const hydrateOverview = useCallback(async () => {
@@ -58,91 +76,345 @@ const SystemAdminDashboard = () => {
 
   if (loading && !overview) {
     return (
-      <section className="rounded-3xl border border-slate-900 bg-slate-950/60 p-8 text-center font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-300">
-        <p>Calibrating secure controls…</p>
+      <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif]">
+        {/* Skeleton Header */}
+        <div className="rounded-3xl border border-slate-800/50 bg-slate-950/60 p-6 shadow-2xl">
+          <div className="animate-pulse">
+            <div className="h-5 w-48 rounded bg-slate-800/50"></div>
+            <div className="mt-3 h-8 w-96 rounded bg-slate-800/50"></div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 rounded-2xl bg-slate-800/50"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Skeleton Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-900/60"></div>
+          ))}
+        </div>
       </section>
     );
   }
 
+  const systemHealth = overviewMetrics.deviceAlerts === 0 ? 'healthy' : 
+                       overviewMetrics.deviceAlerts < 5 ? 'warning' : 'critical';
+  const healthConfig = {
+    healthy: { color: 'emerald', label: 'All Systems Operational', icon: '✓' },
+    warning: { color: 'amber', label: 'Minor Issues Detected', icon: '⚠' },
+    critical: { color: 'rose', label: 'Critical Alerts Active', icon: '⚠' }
+  };
+  const healthStatus = healthConfig[systemHealth];
+
   return (
-    <section className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
-      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-8 shadow-2xl">
-        <div className="space-y-5">
-          <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-            System Admin Control Plane
-          </p>
-          <h1 className="text-3xl font-semibold text-white sm:text-4xl">
-            Operational trust &amp; certificate authority command
-          </h1>
-          <p className="text-base text-slate-200/80">
-            Issue privileged certificates, heal revocation lists, rotate CA
-            keys, and supervise every audit signal from a single high-trust
-            surface.
-          </p>
-          {error && (
-            <p className="text-sm font-medium text-rose-200">⚠️ {error}</p>
-          )}
-        </div>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/40 px-5 py-4">
-            <small className="text-xs uppercase tracking-wide text-slate-400">
-              Total certificates
-            </small>
-            <p className="mt-2 text-3xl font-semibold text-white">
-              {overviewMetrics.totalCertificates}
-            </p>
+    <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
+      {/* Header Section - Enhanced */}
+      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                System Admin Control Plane
+              </p>
+              {/* System Health Badge */}
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                systemHealth === 'healthy' ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' :
+                systemHealth === 'warning' ? 'border-amber-400/40 bg-amber-500/10 text-amber-300' :
+                'border-rose-400/40 bg-rose-500/10 text-rose-300'
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  systemHealth === 'healthy' ? 'bg-emerald-400 animate-pulse' :
+                  systemHealth === 'warning' ? 'bg-amber-400 animate-pulse' :
+                  'bg-rose-400 animate-pulse'
+                }`}></span>
+                {healthStatus.label}
+              </span>
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+              Operational trust &amp; certificate authority command
+            </h1>
+            {error && (
+              <p className="mt-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200">
+                ⚠️ {error}
+              </p>
+            )}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-950/40 px-5 py-4">
-            <small className="text-xs uppercase tracking-wide text-slate-400">
-              Revoked
-            </small>
-            <p className="mt-2 text-3xl font-semibold text-white">
-              {overviewMetrics.revokedCount}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-950/40 px-5 py-4">
-            <small className="text-xs uppercase tracking-wide text-slate-400">
-              Device alerts
-            </small>
-            <p className="mt-2 text-3xl font-semibold text-white">
-              {overviewMetrics.deviceAlerts}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-3">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-2xl border border-indigo-400/40 bg-indigo-500/10 px-5 py-2 text-sm font-semibold text-indigo-100 transition hover:border-indigo-200 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-2xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:border-indigo-200 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {refreshing ? "Refreshing…" : "Refresh intelligence"}
+            <svg className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {refreshing ? "Syncing…" : "Refresh"}
           </button>
+        </div>
+
+        {/* Enhanced Metrics Grid */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {/* Total Certificates */}
+          <div className="group relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-950/40 to-slate-950/40 p-4 transition hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10">
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <small className="text-xs font-semibold uppercase tracking-wider text-cyan-300/80">
+                  Total Certificates
+                </small>
+                <div className="rounded-lg bg-cyan-500/20 p-1.5">
+                  <svg className="h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {overviewMetrics.totalCertificates}
+              </p>
+              <div className="mt-2 flex items-center gap-1 text-xs text-cyan-300/70">
+                <span className="inline-flex items-center">
+                  Active PKI inventory
+                </span>
+              </div>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 opacity-0 transition group-hover:opacity-100"></div>
+          </div>
+
+          {/* Revoked Certificates */}
+          <div className="group relative overflow-hidden rounded-2xl border border-rose-400/20 bg-gradient-to-br from-rose-950/40 to-slate-950/40 p-4 transition hover:border-rose-400/40 hover:shadow-lg hover:shadow-rose-500/10">
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <small className="text-xs font-semibold uppercase tracking-wider text-rose-300/80">
+                  Revoked
+                </small>
+                <div className="rounded-lg bg-rose-500/20 p-1.5">
+                  <svg className="h-4 w-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {overviewMetrics.revokedCount}
+              </p>
+              <div className="mt-2 flex items-center gap-1 text-xs text-rose-300/70">
+                {overviewMetrics.revokedCount === 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    No revocations
+                  </span>
+                ) : (
+                  <span>CRL entries active</span>
+                )}
+              </div>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-rose-500/0 opacity-0 transition group-hover:opacity-100"></div>
+          </div>
+
+          {/* Device Alerts */}
+          <div className={`group relative overflow-hidden rounded-2xl border p-4 transition hover:shadow-lg ${
+            overviewMetrics.deviceAlerts === 0 
+              ? 'border-emerald-400/20 bg-gradient-to-br from-emerald-950/40 to-slate-950/40 hover:border-emerald-400/40 hover:shadow-emerald-500/10'
+              : 'border-amber-400/20 bg-gradient-to-br from-amber-950/40 to-slate-950/40 hover:border-amber-400/40 hover:shadow-amber-500/10'
+          }`}>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <small className={`text-xs font-semibold uppercase tracking-wider ${
+                  overviewMetrics.deviceAlerts === 0 ? 'text-emerald-300/80' : 'text-amber-300/80'
+                }`}>
+                  Device Alerts
+                </small>
+                <div className={`rounded-lg p-1.5 ${
+                  overviewMetrics.deviceAlerts === 0 ? 'bg-emerald-500/20' : 'bg-amber-500/20'
+                }`}>
+                  <svg className={`h-4 w-4 ${overviewMetrics.deviceAlerts === 0 ? 'text-emerald-400' : 'text-amber-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {overviewMetrics.deviceAlerts}
+              </p>
+              <div className={`mt-2 flex items-center gap-1 text-xs ${
+                overviewMetrics.deviceAlerts === 0 ? 'text-emerald-300/70' : 'text-amber-300/70'
+              }`}>
+                {overviewMetrics.deviceAlerts === 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    All devices verified
+                  </span>
+                ) : (
+                  <span>Requires attention</span>
+                )}
+              </div>
+            </div>
+            <div className={`absolute inset-0 bg-gradient-to-r opacity-0 transition group-hover:opacity-100 ${
+              overviewMetrics.deviceAlerts === 0 
+                ? 'from-emerald-500/0 via-emerald-500/5 to-emerald-500/0'
+                : 'from-amber-500/0 via-amber-500/5 to-amber-500/0'
+            }`}></div>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
-        <h3 className="text-xl font-semibold text-slate-100">
-          Role distribution
-        </h3>
-        <p className="mt-1 text-sm text-slate-400">
-          Inventory by active trust roles.
-        </p>
-        <div className="mt-6">
+      {/* Enhanced Quick Actions */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <a
+          href="/system-admin/certificates/issue"
+          className="group relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-5 transition hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 no-underline"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/20 backdrop-blur-sm transition group-hover:scale-110 group-hover:bg-cyan-500/30">
+                <svg className="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <svg className="h-5 w-5 text-cyan-400/50 transition group-hover:translate-x-1 group-hover:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </div>
+            <div className="mt-4">
+              <p className="text-base font-semibold text-white group-hover:text-cyan-300 transition">
+                Issue Certificate
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Create new PKI credentials
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-cyan-500/5 to-transparent opacity-0 transition group-hover:opacity-100"></div>
+        </a>
+
+        <a
+          href="/system-admin/certificates/crl"
+          className="group relative overflow-hidden rounded-2xl border border-rose-400/20 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-5 transition hover:border-rose-400/50 hover:shadow-lg hover:shadow-rose-500/20 no-underline"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/20 backdrop-blur-sm transition group-hover:scale-110 group-hover:bg-rose-500/30">
+                <svg className="h-6 w-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
+              <svg className="h-5 w-5 text-rose-400/50 transition group-hover:translate-x-1 group-hover:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </div>
+            <div className="mt-4">
+              <p className="text-base font-semibold text-white group-hover:text-rose-300 transition">
+                CRL Management
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Revoke compromised certs
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/0 via-rose-500/5 to-transparent opacity-0 transition group-hover:opacity-100"></div>
+        </a>
+
+        <a
+          href="/system-admin/users"
+          className="group relative overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-5 transition hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 no-underline"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20 backdrop-blur-sm transition group-hover:scale-110 group-hover:bg-blue-500/30">
+                <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <svg className="h-5 w-5 text-blue-400/50 transition group-hover:translate-x-1 group-hover:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </div>
+            <div className="mt-4">
+              <p className="text-base font-semibold text-white group-hover:text-blue-300 transition">
+                User Inventory
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Manage user accounts
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-transparent opacity-0 transition group-hover:opacity-100"></div>
+        </a>
+
+        <a
+          href="/system-admin/audit/global"
+          className="group relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-5 transition hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 no-underline"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 backdrop-blur-sm transition group-hover:scale-110 group-hover:bg-emerald-500/30">
+                <svg className="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <svg className="h-5 w-5 text-emerald-400/50 transition group-hover:translate-x-1 group-hover:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </div>
+            <div className="mt-4">
+              <p className="text-base font-semibold text-white group-hover:text-emerald-300 transition">
+                Audit Logs
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                View system activity
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/5 to-transparent opacity-0 transition group-hover:opacity-100"></div>
+        </a>
+      </div>
+
+      {/* Enhanced Role Distribution */}
+      <div className="rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-slate-950/80 to-indigo-950/40 p-6 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-indigo-500/20 p-1.5">
+                <svg className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-100">
+                Role distribution
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Active certificate inventory by role
+            </p>
+          </div>
+          <a
+            href="/system-admin/roles"
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 transition hover:border-indigo-400/50 hover:bg-indigo-500/20 no-underline"
+          >
+            Manage roles
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+        <div className="mt-5">
           <RolePulse roleBreakdown={overview?.certificates?.by_role || {}} />
         </div>
       </div>
 
+      {/* Activity Feeds - Side by Side */}
       <div className="grid gap-6 lg:grid-cols-2">
         <SecurityEventFeed
           sectionId="sys-admin-security-feed"
-          events={securityEvents}
+          events={securityEvents.slice(0, 10)}
           onRefresh={loadSecurityEvents}
         />
         <GlobalAuditFeed
           sectionId="sys-admin-audit"
-          entries={auditFeed}
+          entries={auditFeed.slice(0, 10)}
           onRefresh={loadAuditFeed}
         />
       </div>
