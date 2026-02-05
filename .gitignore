@@ -43,4 +43,14 @@ dist/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
+Thumbs.db# Development files
+start-dev.sh
+*.log
+backend.log
+backend_output.log
+frontend.log
+
+# Root level dependency files (project is monorepo with separate frontend/backend)
+/package.json
+/package-lock.json
+/node_modules
