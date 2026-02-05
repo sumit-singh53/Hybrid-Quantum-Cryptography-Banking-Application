@@ -25,11 +25,26 @@ class RequestAuditStore:
     @classmethod
     def _load(cls) -> List[Dict[str, Any]]:
         cls._ensure_store()
-        with cls.STORE_PATH.open("r", encoding="utf-8") as handle:
-            data = json.load(handle)
-        if not isinstance(data, list):
-            raise RuntimeError("Request audit log store corrupted")
-        return data
+        try:
+            with cls.STORE_PATH.open("r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if not isinstance(data, list):
+                raise RuntimeError("Request audit log store corrupted")
+            return data
+        except (json.JSONDecodeError, RuntimeError) as e:
+            # If JSON is corrupted, backup the bad file and start fresh
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Corrupted audit log detected: {e}. Creating backup and starting fresh.")
+            
+            # Backup corrupted file
+            backup_path = cls.STORE_PATH.with_suffix('.json.corrupted')
+            if cls.STORE_PATH.exists():
+                cls.STORE_PATH.rename(backup_path)
+            
+            # Create fresh empty log
+            cls.STORE_PATH.write_text("[]", encoding="utf-8")
+            return []
 
     @classmethod
     def _save(cls, data: List[Dict[str, Any]]) -> None:

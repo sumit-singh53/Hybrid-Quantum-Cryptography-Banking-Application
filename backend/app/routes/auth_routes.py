@@ -657,6 +657,9 @@ def qr_certificate_login():
             )
         account_number = profile.account_number
 
+    # Fetch user details from database
+    user_record = User.query.get(certificate["user_id"])
+    
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
 
@@ -665,6 +668,13 @@ def qr_certificate_login():
         "name": certificate["owner"],
         "role": certificate["role"],
     }
+    
+    # Add additional user details if available
+    if user_record:
+        session_user_payload["full_name"] = user_record.full_name
+        session_user_payload["username"] = user_record.username
+        session_user_payload["email"] = user_record.email
+    
     if account_number:
         session_user_payload["account_number"] = account_number
 
@@ -814,6 +824,9 @@ def certificate_login():
             )
         account_number = profile.account_number
 
+    # Fetch user details from database
+    user_record = User.query.get(certificate["user_id"])
+
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
 
@@ -822,6 +835,13 @@ def certificate_login():
         "name": certificate["owner"],
         "role": certificate["role"],
     }
+    
+    # Add additional user details if available
+    if user_record:
+        session_user_payload["full_name"] = user_record.full_name
+        session_user_payload["username"] = user_record.username
+        session_user_payload["email"] = user_record.email
+    
     if account_number:
         session_user_payload["account_number"] = account_number
 
