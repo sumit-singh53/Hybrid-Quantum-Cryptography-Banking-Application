@@ -15,6 +15,7 @@ import {
   ArrowRightStartOnRectangleIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useRole } from "../../context/RoleContext";
 import { ROLES } from "../../utils/roleUtils";
@@ -35,6 +36,11 @@ const navConfig = {
         to: "/transactions/history",
         label: "Transaction history",
         icon: ClockIcon,
+      },
+      {
+        to: "/statements",
+        label: "Statements & Reports",
+        icon: DocumentTextIcon,
       },
       { to: "/profile", label: "Profile", icon: UserIcon },
       { to: "/security", label: "Security", icon: ShieldCheckIcon },
@@ -168,7 +174,7 @@ const Sidebar = () => {
 
   return (
     <aside
-      className={`mt-4 w-full self-start pt-0 transition-[max-width] duration-300 lg:mt-6 lg:ml-4 lg:flex-none ${
+      className={`mt-4 w-full self-start pt-0 transition-all duration-500 ease-in-out lg:mt-6 lg:ml-4 lg:flex-none ${
         collapseForDesktop ? "lg:max-w-[5.5rem]" : "lg:max-w-[18rem]"
       }`}
     >
@@ -180,7 +186,7 @@ const Sidebar = () => {
         </div>
       )}
       
-      <div className={`relative flex min-h-[320px] flex-col gap-5 rounded-[32px] p-5 shadow-2xl backdrop-blur-xl lg:sticky lg:top-6 ${
+      <div className={`relative flex min-h-[320px] flex-col gap-5 rounded-[32px] p-5 shadow-2xl backdrop-blur-xl lg:sticky lg:top-6 transition-all duration-500 ${
         isAdminRole 
           ? 'border border-indigo-400/20 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-indigo-950/90 shadow-indigo-500/20' 
           : 'border border-white/60 bg-gradient-to-br from-white via-cyan-50/40 to-slate-50 shadow-[0_25px_55px_rgba(15,23,42,0.12)]'
@@ -190,40 +196,50 @@ const Sidebar = () => {
           <div className="absolute inset-x-0 -top-px mx-auto h-px w-3/4 bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
         )}
         
-        <div className="flex items-center justify-between gap-3">
-          {(!collapseForDesktop || !isDesktop) && (
-            <div>
-              <p className={`text-[0.55rem] uppercase tracking-[0.45em] ${
-                isAdminRole ? 'text-indigo-400/70' : 'text-cyan-600/70'
-              }`}>
-                {nav.title}
-              </p>
-              <p className={`text-sm ${
-                isAdminRole ? 'text-slate-400' : 'text-slate-500'
-              }`}>{nav.description}</p>
-            </div>
-          )}
+        {/* Toggle Button - Always visible, positioned absolutely when collapsed */}
+        <div className={`flex items-center gap-3 transition-all duration-500 ${
+          collapseForDesktop ? 'flex-col items-center' : 'flex-row justify-between'
+        }`}>
+          {/* Title Section - Hidden when collapsed */}
+          <div className={`transition-all duration-500 overflow-hidden ${
+            collapseForDesktop ? 'max-h-0 opacity-0' : 'max-h-20 opacity-100'
+          }`}>
+            <p className={`text-[0.55rem] uppercase tracking-[0.45em] whitespace-nowrap ${
+              isAdminRole ? 'text-indigo-400/70' : 'text-cyan-600/70'
+            }`}>
+              {nav.title}
+            </p>
+            <p className={`text-sm whitespace-nowrap ${
+              isAdminRole ? 'text-slate-400' : 'text-slate-500'
+            }`}>{nav.description}</p>
+          </div>
+          
+          {/* Toggle Button */}
           <button
             type="button"
             onClick={handleToggle}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide shadow-sm backdrop-blur transition ${
+            className={`flex-shrink-0 inline-flex items-center justify-center rounded-full border shadow-lg backdrop-blur transition-all duration-300 hover:scale-110 active:scale-95 ${
+              collapseForDesktop ? 'h-11 w-11 p-0' : 'gap-1.5 px-3 py-2'
+            } ${
               isAdminRole
-                ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/20'
-                : 'border-white/70 bg-white/80 text-slate-500 hover:border-cyan-300 hover:text-slate-900'
+                ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/20 hover:shadow-indigo-500/50'
+                : 'border-cyan-200/70 bg-white/90 text-slate-600 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 hover:shadow-cyan-500/30'
             }`}
             aria-expanded={!isCollapsed}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? (
-              <ChevronDoubleRightIcon className="h-4 w-4" />
+              <ChevronDoubleRightIcon className="h-5 w-5" />
             ) : (
-              <ChevronDoubleLeftIcon className="h-4 w-4" />
+              <ChevronDoubleLeftIcon className="h-5 w-5" />
             )}
           </button>
         </div>
 
-        <ul className="list-none space-y-2.5 transition-all duration-300">
+        <ul className={`list-none space-y-2.5 transition-all duration-500 ${
+          collapseForDesktop ? 'px-0' : ''
+        }`}>
           {nav.links.map((link) => {
             const isLogout = link.to === "/logout";
             const Icon = link.icon || HomeIcon;
@@ -237,59 +253,67 @@ const Sidebar = () => {
                   className={({ isActive }) => {
                     if (isAdminRole) {
                       return [
-                        "group relative flex items-center rounded-2xl border px-4 py-3 text-sm font-semibold no-underline backdrop-blur transition-all duration-200",
-                        iconOnlyMode ? "justify-start" : "justify-between",
+                        "group relative flex items-center rounded-2xl border text-sm font-semibold no-underline backdrop-blur transition-all duration-300",
+                        iconOnlyMode ? "justify-center px-3 py-3" : "justify-between px-4 py-3",
                         isActive
                           ? "border-indigo-400/50 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-transparent text-indigo-200 shadow-lg shadow-indigo-500/30"
-                          : "border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-indigo-400/30 hover:bg-slate-800/60 hover:text-indigo-300",
+                          : "border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-indigo-400/30 hover:bg-slate-800/60 hover:text-indigo-300 hover:scale-105",
                         isLogout && "border-rose-400/30 bg-rose-500/10 text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/20"
                       ].filter(Boolean).join(" ");
                     }
                     return [
-                      "flex items-center rounded-[20px] border border-white/60 bg-white/60 pr-4 pl-3 py-2.5 text-sm font-semibold text-slate-600 no-underline shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500",
-                      iconOnlyMode ? "justify-start" : "justify-between",
+                      "flex items-center rounded-[20px] border border-white/60 bg-white/60 text-sm font-semibold text-slate-600 no-underline shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500",
+                      iconOnlyMode ? "justify-center px-3 py-2.5" : "justify-between pr-4 pl-3 py-2.5",
                       isActive
-                        ? "border-cyan-300/70 bg-gradient-to-r from-cyan-50 via-white to-white text-cyan-900 shadow shadow-cyan-100"
-                        : "hover:border-cyan-200 hover:bg-white/90 hover:text-slate-900",
+                        ? "border-cyan-300/70 bg-gradient-to-r from-cyan-50 via-white to-white text-cyan-900 shadow-lg shadow-cyan-100/50 scale-105"
+                        : "hover:border-cyan-200 hover:bg-white/90 hover:text-slate-900 hover:scale-105",
                     ].join(" ");
                   }}
                 >
                   {/* Active Indicator Glow */}
                   {({ isActive }) => (
                     <>
-                      {isAdminRole && isActive && (
+                      {isAdminRole && isActive && !iconOnlyMode && (
                         <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-indigo-500/20 to-transparent blur-xl"></div>
                       )}
-                      <span className="flex items-center gap-3">
+                      
+                      {/* Icon + Label Container */}
+                      <span className={`flex items-center transition-all duration-300 ${
+                        iconOnlyMode ? 'gap-0' : 'gap-3'
+                      }`}>
                         <Icon
-                          className={`h-5 w-5 transition-colors ${
+                          className={`flex-shrink-0 transition-all duration-300 ${
+                            iconOnlyMode ? 'h-6 w-6' : 'h-5 w-5'
+                          } ${
                             isAdminRole 
                               ? (isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400')
-                              : 'text-slate-500'
+                              : (isActive ? 'text-cyan-600' : 'text-slate-500 group-hover:text-cyan-600')
                           }`}
                           aria-hidden="true"
                         />
                         <span
-                          className={`text-sm font-medium transition-opacity duration-150 ${
-                            iconOnlyMode ? "hidden" : "block"
+                          className={`text-sm font-medium transition-all duration-300 overflow-hidden whitespace-nowrap ${
+                            iconOnlyMode ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100"
                           } ${
                             isAdminRole
                               ? (isActive ? 'text-indigo-200' : 'text-slate-400 group-hover:text-indigo-300')
-                              : 'text-slate-700'
+                              : (isActive ? 'text-cyan-900' : 'text-slate-700 group-hover:text-slate-900')
                           }`}
                         >
                           {link.label}
                         </span>
                       </span>
-                      {!iconOnlyMode && (
-                        <span
-                          className={`h-2 w-2 rounded-full transition-all ${
-                            isAdminRole
-                              ? (isActive ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : isLogout ? 'bg-rose-400/50' : 'bg-slate-600/50')
-                              : (isLogout ? "bg-rose-400" : "bg-cyan-400/70")
-                          }`}
-                        />
-                      )}
+                      
+                      {/* Active Indicator Dot */}
+                      <span
+                        className={`flex-shrink-0 rounded-full transition-all duration-300 ${
+                          iconOnlyMode ? 'h-0 w-0 opacity-0' : 'h-2 w-2 opacity-100'
+                        } ${
+                          isAdminRole
+                            ? (isActive ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : isLogout ? 'bg-rose-400/50' : 'bg-slate-600/50')
+                            : (isActive ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50' : isLogout ? "bg-rose-400" : "bg-cyan-400/70")
+                        }`}
+                      />
                     </>
                   )}
                 </NavLink>

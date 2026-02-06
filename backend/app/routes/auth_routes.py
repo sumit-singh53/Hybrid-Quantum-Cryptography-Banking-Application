@@ -34,6 +34,7 @@ from app.security.kyber_crystal import KyberCrystal
 from app.models.customer_model import Customer, CustomerStatus
 from app.models.user_model import User
 from app.models.role_model import Role
+from app.models.certificate_model import Certificate
 from app.config.database import db
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -277,7 +278,22 @@ def register_customer():
     try:
         profile = _ensure_customer_profile(user_id=user_id, full_name=full_name)
         # Also create User record for admin panel visibility
-        _ensure_user_record(user_id=user_id, username=username, full_name=full_name, email=email, role_name="customer")
+        user_record = _ensure_user_record(user_id=user_id, username=username, full_name=full_name, email=email, role_name="customer")
+        
+        # Create Certificate database record to link UUID to User
+        existing_cert = Certificate.query.filter_by(certificate_id=user_id).first()
+        if not existing_cert:
+            cert_record = Certificate(
+                certificate_id=user_id,
+                user_id=user_record.id,
+                issued_by="CA",
+                algorithm="RSA+Dilithium",
+                valid_from=datetime.utcnow(),
+                valid_to=datetime.utcnow() + timedelta(days=365),
+                is_revoked=False
+            )
+            db.session.add(cert_record)
+            db.session.commit()
     except Exception as exc:  # pylint: disable=broad-except
         db.session.rollback()
         current_app.logger.error("Unable to provision customer account: %s", exc)
@@ -657,8 +673,11 @@ def qr_certificate_login():
             )
         account_number = profile.account_number
 
-    # Fetch user details from database
-    user_record = User.query.get(certificate["user_id"])
+    # Fetch user details from database via Certificate
+    user_record = None
+    cert_record = Certificate.query.filter_by(certificate_id=certificate["user_id"]).first()
+    if cert_record:
+        user_record = cert_record.user
     
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
@@ -667,6 +686,7 @@ def qr_certificate_login():
         "id": certificate["user_id"],
         "name": certificate["owner"],
         "role": certificate["role"],
+        "certificate_id": certificate.get("certificate_id") or certificate["user_id"],
     }
     
     # Add additional user details if available
@@ -716,19 +736,31 @@ def qr_certificate_login():
         },
     )
 
+    # Build user response object with all available data
+    user_response = {
+        "id": certificate["user_id"],
+        "name": certificate["owner"],
+        "role": certificate["role"],
+        "allowed_actions": certificate.get("allowed_actions", []),
+        "certificate_id": certificate.get("certificate_id") or certificate["user_id"],
+    }
+    
+    # Add user record details if available
+    if user_record:
+        user_response["full_name"] = user_record.full_name
+        user_response["username"] = user_record.username
+        user_response["email"] = user_record.email
+    
+    if account_number:
+        user_response["account_number"] = account_number
+    
     response = jsonify(
         {
             "message": "QR login successful",
             "token": access_token,
             "token_expires_in": ACCESS_TOKEN_TTL_SECONDS,
             "refresh_endpoint": REFRESH_ENDPOINT,
-            "user": {
-                "id": certificate["user_id"],
-                "name": certificate["owner"],
-                "role": certificate["role"],
-                "allowed_actions": certificate.get("allowed_actions", []),
-                "account_number": account_number,
-            },
+            "user": user_response,
             "security": {
                 "classical": "RSA-3072 client signature verified",
                 "post_quantum": (
@@ -824,8 +856,11 @@ def certificate_login():
             )
         account_number = profile.account_number
 
-    # Fetch user details from database
-    user_record = User.query.get(certificate["user_id"])
+    # Fetch user details from database via Certificate
+    user_record = None
+    cert_record = Certificate.query.filter_by(certificate_id=certificate["user_id"]).first()
+    if cert_record:
+        user_record = cert_record.user
 
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
@@ -834,6 +869,7 @@ def certificate_login():
         "id": certificate["user_id"],
         "name": certificate["owner"],
         "role": certificate["role"],
+        "certificate_id": certificate.get("certificate_id") or certificate["user_id"],
     }
     
     # Add additional user details if available
@@ -888,19 +924,32 @@ def certificate_login():
         },
     )
 
+    # Build user response object with all available data from session_user_payload
+    user_response = {
+        "id": session_user_payload["id"],
+        "name": session_user_payload["name"],
+        "role": session_user_payload["role"],
+        "allowed_actions": certificate.get("allowed_actions", []),
+        "certificate_id": session_user_payload.get("certificate_id"),
+    }
+    
+    # Add optional fields if they exist
+    if "username" in session_user_payload:
+        user_response["username"] = session_user_payload["username"]
+    if "email" in session_user_payload:
+        user_response["email"] = session_user_payload["email"]
+    if "full_name" in session_user_payload:
+        user_response["full_name"] = session_user_payload["full_name"]
+    if "account_number" in session_user_payload:
+        user_response["account_number"] = session_user_payload["account_number"]
+    
     response = jsonify(
         {
             "message": "Login successful",
             "token": access_token,
             "token_expires_in": ACCESS_TOKEN_TTL_SECONDS,
             "refresh_endpoint": REFRESH_ENDPOINT,
-            "user": {
-                "id": certificate["user_id"],
-                "name": certificate["owner"],
-                "role": certificate["role"],
-                "allowed_actions": certificate.get("allowed_actions", []),
-                "account_number": account_number,
-            },
+            "user": user_response,
             "security": {
                 "classical": "RSA-3072 client signature verified",
                 "post_quantum": "Dilithium client signature verified",
@@ -963,15 +1012,28 @@ def verify_session():
     if token:
         mark_session_verified(token)
 
+    # Build user response with all session data
+    user_response = {
+        "id": session_user.get("id"),
+        "name": session_user.get("name"),
+        "role": session_user.get("role"),
+        "allowed_actions": certificate.get("allowed_actions", []),
+        "certificate_id": session_user.get("certificate_id") or certificate.get("certificate_id"),
+    }
+    
+    # Add optional fields from session if available
+    if "username" in session_user:
+        user_response["username"] = session_user["username"]
+    if "email" in session_user:
+        user_response["email"] = session_user["email"]
+    if "full_name" in session_user:
+        user_response["full_name"] = session_user["full_name"]
+    if account_number:
+        user_response["account_number"] = account_number
+    
     return jsonify(
         {
-            "user": {
-                "id": session_user.get("id"),
-                "name": session_user.get("name"),
-                "role": session_user.get("role"),
-                "allowed_actions": certificate.get("allowed_actions", []),
-                "account_number": account_number,
-            },
+            "user": user_response,
             "certificate": {
                 "certificate_id": certificate.get("certificate_id"),
                 "serial_number": certificate.get("serial_number"),

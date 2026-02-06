@@ -1,9 +1,9 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import "./ProfileSwitcher.css";
 import { useRole } from "../../../context/RoleContext";
 import { useAuth } from "../../../context/AuthContext";
 import { ROLES } from "../../../utils/roleUtils";
+import CustomerProfile from "./CustomerProfile";
 
 const InfoRow = ({ label, value }) => (
   <div className="profile-meta-row">
@@ -12,7 +12,7 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-const CustomerProfile = ({ user }) => {
+const CustomerProfileOld = ({ user }) => {
   const certificateId = user?.certificate_id || user?.certificateId;
 
   return (
@@ -102,7 +102,7 @@ const ProfileSwitcher = () => {
   const { user } = useAuth();
 
   if (role === ROLES.CUSTOMER) {
-    return <CustomerProfile user={user} />;
+    return <CustomerProfile />;
   }
 
   if (role === ROLES.AUDITOR_CLERK) {

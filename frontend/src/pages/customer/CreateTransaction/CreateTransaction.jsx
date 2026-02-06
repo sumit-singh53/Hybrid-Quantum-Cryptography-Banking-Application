@@ -18,7 +18,7 @@ const ROLE_GUARDS = {
 const CreateTransaction = () => {
   const { user, isVerifyingSession } = useAuth();
   const { role, hasAccess } = useRole();
-  const [form, setForm] = useState({ to_account: "", amount: "", purpose: "" });
+  const [form, setForm] = useState({ to_account: "", recipient_name: "", amount: "", purpose: "", category: "general", schedule_date: "" });
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -30,6 +30,7 @@ const CreateTransaction = () => {
   const [beneficiaryName, setBeneficiaryName] = useState(null);
   const [lookingUpBeneficiary, setLookingUpBeneficiary] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
 
   const senderAccount = user?.account_number || "";
   const isCustomer = hasAccess(["customer"]);
@@ -124,8 +125,8 @@ const CreateTransaction = () => {
   };
 
   const handleRecentRecipient = (account) => {
-    setForm({ ...form, to_account: account });
-    setFieldErrors((prev) => ({ ...prev, to_account: null }));
+    setForm({ ...form, to_account: account, recipient_name: "" });
+    setFieldErrors((prev) => ({ ...prev, to_account: null, recipient_name: null }));
   };
 
   const validateForm = () => {
@@ -140,6 +141,16 @@ const CreateTransaction = () => {
       errors.to_account = "You cannot transfer to your own account.";
     }
 
+    // Validate recipient name
+    const recipientNameError = isRequired(form.recipient_name, "Recipient name");
+    if (recipientNameError) {
+      errors.recipient_name = recipientNameError;
+    } else if (form.recipient_name.trim().length < 3) {
+      errors.recipient_name = "Recipient name must be at least 3 characters.";
+    } else if (!/^[a-zA-Z\s.'-]+$/.test(form.recipient_name)) {
+      errors.recipient_name = "Name can only contain letters, spaces, and basic punctuation.";
+    }
+
     const amountError = validateAmount(form.amount);
     if (amountError) {
       errors.amount = amountError;
@@ -152,6 +163,17 @@ const CreateTransaction = () => {
     } else if (purposeValue.length > 240) {
       errors.purpose = "Purpose must be 240 characters or fewer.";
     }
+
+    // Validate schedule date if provided
+    if (form.schedule_date) {
+      const scheduleDate = new Date(form.schedule_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (scheduleDate < today) {
+        errors.schedule_date = "Cannot schedule transfer in the past.";
+      }
+    }
+
     return errors;
   };
 
@@ -170,9 +192,17 @@ const CreateTransaction = () => {
       setLoading(true);
       const payload = {
         to_account: form.to_account.trim(),
+        recipient_name: form.recipient_name.trim(),
         amount: Number(form.amount),
         purpose: form.purpose.trim(),
+        category: form.category,
       };
+
+      // Add schedule date if provided
+      if (form.schedule_date) {
+        payload.schedule_date = form.schedule_date;
+      }
+
       const response = await createTransaction(payload);
       const message = response.requires_manager_approval
         ? "Transfer submitted. A manager will review it shortly."
@@ -184,7 +214,8 @@ const CreateTransaction = () => {
           response.status ||
           (response.requires_manager_approval ? "pending_review" : "approved"),
       });
-      setForm({ to_account: "", amount: "", purpose: "" });
+      setForm({ to_account: "", recipient_name: "", amount: "", purpose: "", category: "general", schedule_date: "" });
+      setShowPreview(false);
     } catch (err) {
       setServerError(
         err?.response?.data?.message || "Failed to initiate transfer.",
@@ -237,7 +268,7 @@ const CreateTransaction = () => {
             </div>
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md">
               <svg className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
@@ -303,6 +334,23 @@ const CreateTransaction = () => {
               </div>
             )}
           </label>
+
+          {/* Recipient Name Field */}
+          <div className="mt-4">
+            <span className="text-sm font-semibold text-slate-700">Recipient Name</span>
+            <input
+              type="text"
+              name="recipient_name"
+              value={form.recipient_name}
+              onChange={handleChange}
+              placeholder="Enter full name of recipient"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              required
+            />
+            {fieldErrors.recipient_name && (
+              <p className="mt-2 text-sm text-rose-600">{fieldErrors.recipient_name}</p>
+            )}
+          </div>
 
           {/* Recent Recipients */}
           {recentRecipients.length > 0 && !form.to_account && (
@@ -387,6 +435,56 @@ const CreateTransaction = () => {
           </div>
         </div>
 
+        {/* Transaction Category */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-700">Transaction Category</span>
+            <select
+              name="category"
+              value={form.category}
+              onChange={handleChange}
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="general">General Transfer</option>
+              <option value="bills">Bill Payment</option>
+              <option value="education">Education/Tuition</option>
+              <option value="rent">Rent Payment</option>
+              <option value="loan">Loan Repayment</option>
+              <option value="investment">Investment</option>
+              <option value="medical">Medical Expenses</option>
+              <option value="business">Business Transaction</option>
+              <option value="family">Family Support</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+        </div>
+
+        {/* Schedule Transfer (Optional) */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <label className="block">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-700">Schedule Transfer (Optional)</span>
+              <span className="text-xs text-slate-500">Leave blank for immediate transfer</span>
+            </div>
+            <input
+              type="date"
+              name="schedule_date"
+              value={form.schedule_date}
+              onChange={handleChange}
+              min={new Date().toISOString().split('T')[0]}
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            />
+            {form.schedule_date && (
+              <p className="mt-2 flex items-center gap-2 text-xs text-indigo-600">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Transfer will be processed on {new Date(form.schedule_date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            )}
+          </label>
+        </div>
+
         {/* Purpose */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <label className="block">
@@ -412,24 +510,40 @@ const CreateTransaction = () => {
           </label>
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
-          className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Processing Transfer...
-            </span>
-          ) : (
-            "Initiate Transfer"
-          )}
-        </button>
+        {/* Preview and Submit Buttons */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              const errors = validateForm();
+              setFieldErrors(errors);
+              if (Object.keys(errors).length === 0) {
+                setShowPreview(true);
+              }
+            }}
+            disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
+            className="flex-1 rounded-2xl border-2 border-indigo-600 bg-white px-6 py-4 text-base font-semibold text-indigo-600 shadow-sm transition-all hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Review Transfer
+          </button>
+          <button
+            type="submit"
+            disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
+            className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              "Send Money"
+            )}
+          </button>
+        </div>
       </form>
 
       {/* Error Message */}
@@ -440,6 +554,79 @@ const CreateTransaction = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <p className="text-sm font-medium text-rose-700">{serverError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="absolute right-6 top-6 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h3 className="text-2xl font-bold text-slate-900 mb-6">Review Transaction</h3>
+
+            <div className="space-y-4 mb-6">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From Account</p>
+                <p className="font-mono text-sm font-medium text-slate-900">{senderAccount}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To Account</p>
+                <p className="font-mono text-sm font-medium text-slate-900">{form.to_account}</p>
+                {form.recipient_name && (
+                  <p className="text-sm text-slate-600 mt-1">{form.recipient_name}</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">Amount</p>
+                <p className="text-2xl font-bold text-indigo-900">₹{Number(form.amount).toLocaleString("en-IN")}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Category</p>
+                <p className="text-sm font-medium text-slate-900 capitalize">{form.category.replace('_', ' ')}</p>
+              </div>
+
+              {form.schedule_date && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-1">Scheduled For</p>
+                  <p className="text-sm font-medium text-amber-900">{new Date(form.schedule_date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Purpose</p>
+                <p className="text-sm text-slate-700">{form.purpose}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="flex-1 rounded-2xl border-2 border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50"
+              >
+                Edit Details
+              </button>
+              <button
+                onClick={(e) => {
+                  setShowPreview(false);
+                  handleSubmit(e);
+                }}
+                className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl"
+              >
+                Confirm & Send
+              </button>
+            </div>
           </div>
         </div>
       )}
