@@ -3,8 +3,7 @@ import { createTransaction } from "../../../services/transactionService";
 import { validateAmount, isRequired } from "../../../utils/validators";
 import { useAuth } from "../../../context/AuthContext";
 import { useRole } from "../../../context/RoleContext";
-import { fetchCustomerOverview, fetchCustomerTransactions } from "../../../services/customerService";
-import "./CreateTransaction.css";
+import { fetchCustomerOverview } from "../../../services/customerService";
 
 const ROLE_GUARDS = {
   auditor_clerk:
@@ -23,14 +22,7 @@ const CreateTransaction = () => {
   const [serverError, setServerError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  
-  // New states for smart features
   const [balance, setBalance] = useState(null);
-  const [recentRecipients, setRecentRecipients] = useState([]);
-  const [beneficiaryName, setBeneficiaryName] = useState(null);
-  const [lookingUpBeneficiary, setLookingUpBeneficiary] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
 
   const senderAccount = user?.account_number || "";
   const isCustomer = hasAccess(["customer"]);
@@ -44,34 +36,20 @@ const CreateTransaction = () => {
     );
   }, [isCustomer, role]);
 
-  // Load balance and recent recipients on mount
+  // Load balance on mount
   useEffect(() => {
-    const loadData = async () => {
-      if (!isCustomer) {
-        setLoadingData(false);
-        return;
-      }
+    const loadBalance = async () => {
+      if (!isCustomer) return;
       
       try {
-        const [overview, transactions] = await Promise.all([
-          fetchCustomerOverview(),
-          fetchCustomerTransactions()
-        ]);
-        
+        const overview = await fetchCustomerOverview();
         setBalance(overview?.account_balance || 0);
-        
-        // Get unique recent recipients (last 5 SENT transactions)
-        const sent = (transactions || []).filter(tx => tx.direction === "SENT" && tx.to_account);
-        const uniqueAccounts = [...new Set(sent.map(tx => tx.to_account))];
-        setRecentRecipients(uniqueAccounts.slice(0, 5));
       } catch (err) {
-        console.error("Failed to load data:", err);
-      } finally {
-        setLoadingData(false);
+        console.error("Failed to load balance:", err);
       }
     };
 
-    loadData();
+    loadBalance();
   }, [isCustomer]);
 
   // Calculate balance after transaction
@@ -82,51 +60,15 @@ const CreateTransaction = () => {
     return balance - amount;
   }, [balance, form.amount]);
 
-  // Lookup beneficiary when account number is entered
-  useEffect(() => {
-    const lookupBeneficiary = async () => {
-      const account = form.to_account.trim();
-      if (!account || account === senderAccount) {
-        setBeneficiaryName(null);
-        return;
-      }
-
-      setLookingUpBeneficiary(true);
-      try {
-        // Simulate beneficiary lookup - in real app, call API
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // For now, just show account verified
-        setBeneficiaryName("Account Verified");
-      } catch (err) {
-        setBeneficiaryName(null);
-      } finally {
-        setLookingUpBeneficiary(false);
-      }
-    };
-
-    const timer = setTimeout(lookupBeneficiary, 500);
-    return () => clearTimeout(timer);
-  }, [form.to_account, senderAccount]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setFieldErrors((prev) => ({ ...prev, [name]: null }));
-    
-    // Clear beneficiary when changing recipient
-    if (name === "to_account") {
-      setBeneficiaryName(null);
-    }
   };
 
   const handleQuickAmount = (amount) => {
     setForm({ ...form, amount: amount.toString() });
     setFieldErrors((prev) => ({ ...prev, amount: null }));
-  };
-
-  const handleRecentRecipient = (account) => {
-    setForm({ ...form, to_account: account, recipient_name: "" });
-    setFieldErrors((prev) => ({ ...prev, to_account: null, recipient_name: null }));
   };
 
   const validateForm = () => {
@@ -215,7 +157,6 @@ const CreateTransaction = () => {
           (response.requires_manager_approval ? "pending_review" : "approved"),
       });
       setForm({ to_account: "", recipient_name: "", amount: "", purpose: "", category: "general", schedule_date: "" });
-      setShowPreview(false);
     } catch (err) {
       setServerError(
         err?.response?.data?.message || "Failed to initiate transfer.",
@@ -311,28 +252,6 @@ const CreateTransaction = () => {
             {fieldErrors.to_account && (
               <p className="mt-2 text-sm text-rose-600">{fieldErrors.to_account}</p>
             )}
-            
-            {/* Beneficiary Lookup Status */}
-            {form.to_account && !fieldErrors.to_account && (
-              <div className="mt-2">
-                {lookingUpBeneficiary ? (
-                  <p className="flex items-center gap-2 text-xs text-slate-500">
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Verifying account...
-                  </p>
-                ) : beneficiaryName ? (
-                  <p className="flex items-center gap-2 text-xs text-emerald-600">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {beneficiaryName}
-                  </p>
-                ) : null}
-              </div>
-            )}
           </label>
 
           {/* Recipient Name Field */}
@@ -351,27 +270,6 @@ const CreateTransaction = () => {
               <p className="mt-2 text-sm text-rose-600">{fieldErrors.recipient_name}</p>
             )}
           </div>
-
-          {/* Recent Recipients */}
-          {recentRecipients.length > 0 && !form.to_account && (
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Recent Recipients
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {recentRecipients.map((account) => (
-                  <button
-                    key={account}
-                    type="button"
-                    onClick={() => handleRecentRecipient(account)}
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                  >
-                    {account}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Amount with Quick Buttons */}
@@ -510,40 +408,24 @@ const CreateTransaction = () => {
           </label>
         </div>
 
-        {/* Preview and Submit Buttons */}
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              const errors = validateForm();
-              setFieldErrors(errors);
-              if (Object.keys(errors).length === 0) {
-                setShowPreview(true);
-              }
-            }}
-            disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
-            className="flex-1 rounded-2xl border-2 border-indigo-600 bg-white px-6 py-4 text-base font-semibold text-indigo-600 shadow-sm transition-all hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Review Transfer
-          </button>
-          <button
-            type="submit"
-            disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
-            className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              "Send Money"
-            )}
-          </button>
-        </div>
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={loading || !senderAccount || (balanceAfter !== null && balanceAfter < 0)}
+          className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            "Send Money"
+          )}
+        </button>
       </form>
 
       {/* Error Message */}
@@ -554,79 +436,6 @@ const CreateTransaction = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <p className="text-sm font-medium text-rose-700">{serverError}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction Preview Modal */}
-      {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
-          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setShowPreview(false)}
-              className="absolute right-6 top-6 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <h3 className="text-2xl font-bold text-slate-900 mb-6">Review Transaction</h3>
-
-            <div className="space-y-4 mb-6">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From Account</p>
-                <p className="font-mono text-sm font-medium text-slate-900">{senderAccount}</p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To Account</p>
-                <p className="font-mono text-sm font-medium text-slate-900">{form.to_account}</p>
-                {form.recipient_name && (
-                  <p className="text-sm text-slate-600 mt-1">{form.recipient_name}</p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">Amount</p>
-                <p className="text-2xl font-bold text-indigo-900">₹{Number(form.amount).toLocaleString("en-IN")}</p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Category</p>
-                <p className="text-sm font-medium text-slate-900 capitalize">{form.category.replace('_', ' ')}</p>
-              </div>
-
-              {form.schedule_date && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-1">Scheduled For</p>
-                  <p className="text-sm font-medium text-amber-900">{new Date(form.schedule_date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                </div>
-              )}
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Purpose</p>
-                <p className="text-sm text-slate-700">{form.purpose}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowPreview(false)}
-                className="flex-1 rounded-2xl border-2 border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50"
-              >
-                Edit Details
-              </button>
-              <button
-                onClick={(e) => {
-                  setShowPreview(false);
-                  handleSubmit(e);
-                }}
-                className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl"
-              >
-                Confirm & Send
-              </button>
-            </div>
           </div>
         </div>
       )}

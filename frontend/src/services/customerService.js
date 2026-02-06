@@ -24,3 +24,8 @@ export const fetchCustomerCertificate = async () => {
     const response = await api.get("/customer/certificate");
     return response.data;
 };
+
+export const fetchSecurityStatus = async () => {
+    const response = await api.get("/customer/security-status");
+    return response.data;
+};

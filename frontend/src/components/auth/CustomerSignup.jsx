@@ -159,6 +159,14 @@ const CustomerSignup = () => {
       setError("Please fill in all fields to register.");
       return;
     }
+    if (normalizedName.length < 3) {
+      setError("Full name must be at least 3 characters long.");
+      return;
+    }
+    if (!/^[a-zA-Z\s.'-]+$/.test(normalizedName)) {
+      setError("Name can only contain letters, spaces, and basic punctuation (. ' -).");
+      return;
+    }
     if (normalizedPassword.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
@@ -241,76 +249,103 @@ const CustomerSignup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-cyan-50 text-slate-900">
-      <main className="flex flex-col gap-16 px-2 py-8 mx-auto max-w-7xl md:px-8 md:py-12 lg:py-16">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-indigo-50/20 text-slate-900">
+      <main className="flex flex-col gap-16 px-4 py-12 mx-auto max-w-7xl lg:py-20">
         <section className="flex items-center justify-center flex-1">
-          <div className="flex flex-col w-full max-w-4xl overflow-hidden bg-white shadow-lg rounded-xl md:flex-row md:items-stretch">
-            <div className="flex items-center justify-center w-full p-6 sm:p-8 md:w-1/2 bg-gradient-to-br from-green-600 to-green-400">
-              <svg
-                className="w-40 h-40 sm:w-64 sm:h-64"
-                fill="none"
-                viewBox="0 0 200 200"
-                xmlns="http://www.w3.org/2"
-              >
-                <rect width="200" height="200" rx="32" fill="#fff" />
-                <path
-                  d="M40 120v-40a8 8 0 018-8h104a8 8 0 018 8v40"
-                  stroke="#059669"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <rect
-                  x="60"
-                  y="100"
-                  width="80"
-                  height="40"
-                  rx="8"
-                  fill="#059669"
-                />
-                <rect
-                  x="80"
-                  y="120"
-                  width="40"
-                  height="20"
-                  rx="4"
-                  fill="#fff"
-                />
-              </svg>
-            </div>
-            <div className="flex flex-col justify-center w-full p-4 sm:p-8 md:w-1/2">
-              <h2 className="mb-4 text-2xl font-bold text-center text-gray-800 sm:mb-6 sm:text-3xl">
-                Customer Registration
-              </h2>
-              <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-green-900 border border-green-200 rounded-lg shadow bg-green-50 sm:p-4 animate-fade-in">
-                <span className="font-semibold">Signup Instructions:</span>
-                <ul className="pl-5 mt-2 space-y-1 list-disc">
-                  <li>Enter your full legal name and a valid email address.</li>
-                  <li>
-                    Choose a strong password (at least 8 characters, with
-                    letters and numbers).
-                  </li>
-                  <li>
-                    After signup, download and securely store your personal
-                    certificate file.
-                  </li>
-                  <li>
-                    Contact support for any onboarding issues or questions.
-                  </li>
-                </ul>
+          <div className="w-full max-w-6xl">
+            {/* Modern Header */}
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 mb-6 shadow-xl shadow-cyan-500/30">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
               </div>
+              <h1 className="text-4xl font-bold text-slate-900 mb-3">Create Your Account</h1>
+              <p className="text-lg text-slate-600">Join our quantum-safe banking platform with hybrid cryptography</p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8 items-start">
+              {/* Left: Info Card */}
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Bank-Grade Security</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        Your account is protected with quantum-resistant ML-KEM encryption combined with traditional RSA security.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Digital Certificate</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        After registration, you'll receive a unique digital certificate that proves your identity for all transactions.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Device Binding</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        Your account is securely bound to this device, preventing unauthorized access from other locations.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-6">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-amber-900">
+                        <p className="font-semibold mb-1">Important:</p>
+                        <p>Save your certificate file immediately after registration. You'll need it to log in and perform transactions.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Registration Form */}
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Registration Form</h2>
+                <p className="text-slate-600 mb-6">Fill in your details to get started</p>
+                
               {error && (
-                <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-red-800 border border-red-200 rounded-lg sm:p-4 bg-red-50 animate-fade-in">
-                  {error}
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 mb-6 animate-fade-in">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm font-medium text-rose-800">{error}</p>
+                  </div>
                 </div>
               )}
-              <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label
                     htmlFor="full-name"
-                    className="block mb-1 text-sm font-medium text-gray-700"
+                    className="block mb-2 text-sm font-semibold text-slate-700"
                   >
-                    Full name
+                    Full Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="full-name"
@@ -318,17 +353,17 @@ const CustomerSignup = () => {
                     name="full_name"
                     value={form.full_name}
                     onChange={handleChange}
-                    placeholder="e.g., Ada Lovelace"
+                    placeholder="Enter your full legal name"
                     required
-                    className="block w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="block w-full px-4 py-3 text-sm text-slate-900 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="email"
-                    className="block mb-1 text-sm font-medium text-gray-700"
+                    className="block mb-2 text-sm font-semibold text-slate-700"
                   >
-                    Email address
+                    Email Address <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="email"
@@ -336,17 +371,17 @@ const CustomerSignup = () => {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    placeholder="you@bank-secure.com"
+                    placeholder="your.email@example.com"
                     required
-                    className="block w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="block w-full px-4 py-3 text-sm text-slate-900 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="password"
-                    className="block mb-1 text-sm font-medium text-gray-700"
+                    className="block mb-2 text-sm font-semibold text-slate-700"
                   >
-                    Account password
+                    Password <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="password"
@@ -354,17 +389,19 @@ const CustomerSignup = () => {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    placeholder="Password"
+                    placeholder="Minimum 8 characters"
                     required
-                    className="block w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="block w-full px-4 py-3 text-sm text-slate-900 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                   />
+                  <p className="mt-2 text-xs text-slate-500">Must be at least 8 characters with letters and numbers</p>
                 </div>
+                
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full px-4 py-2 font-semibold text-white transition bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-xl shadow-cyan-500/30 transition-all hover:shadow-2xl hover:shadow-cyan-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {loading ? "Registering..." : "Register"}
+                  {loading ? "Creating Your Account..." : "Create Account"}
                 </button>
               </form>
               {credentialSummary && (
@@ -380,9 +417,10 @@ const CustomerSignup = () => {
               )}
             </div>
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </section>
+    </main>
+  </div>
   );
 };
 

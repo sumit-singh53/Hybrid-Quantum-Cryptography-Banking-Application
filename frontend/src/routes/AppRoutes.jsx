@@ -14,7 +14,7 @@ import DashboardSwitcher from "../pages/shared/DashboardSwitcher";
 import ManagerDashboard from "../pages/manager/ManagerDashboard";
 import AccountsOverview from "../pages/customer/AccountsOverview";
 import ProfileSwitcher from "../pages/customer/ProfileSwitcher";
-import SecurityCenter from "../pages/customer/SecurityCenter";
+import SecurityCenter from "../components/security/SecurityCenter";
 import StatementsReports from "../pages/customer/StatementsReports/StatementsReports";
 import ManagerCustomers from "../pages/manager/ManagerCustomers";
 import ManagerCertificates from "../pages/manager/ManagerCertificates";
