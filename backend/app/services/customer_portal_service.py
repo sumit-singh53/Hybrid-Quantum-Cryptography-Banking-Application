@@ -42,37 +42,47 @@ class CustomerPortalService:
         )
 
     @classmethod
-    def _synthetic_accounts(cls, user_id: str) -> List[Dict[str, str]]:
-        digest = hashlib.sha1(user_id.encode("utf-8")).hexdigest().upper()
-        fallback = [
-            {
-                "account_number": f"91-001-{digest[:8]}",
-                "type": "Savings",
-                "currency": "INR",
-                "status": "ACTIVE",
-            },
-            {
-                "account_number": f"91-002-{digest[8:16]}",
-                "type": "Current",
-                "currency": "INR",
-                "status": "ACTIVE",
-            },
-        ]
-
+    def _synthetic_accounts(cls, user_id: str) -> List[Dict[str, Any]]:
         customer = Customer.query.get(user_id)
+        
+        # If no customer record, return fallback with synthetic data
         if not customer:
-            return fallback
+            digest = hashlib.sha1(user_id.encode("utf-8")).hexdigest().upper()
+            return [
+                {
+                    "account_number": f"91-001-{digest[:8]}",
+                    "type": "Savings",
+                    "currency": "INR",
+                    "status": "ACTIVE",
+                    "balance": 0.0,
+                },
+                {
+                    "account_number": f"91-002-{digest[8:16]}",
+                    "type": "Current",
+                    "currency": "INR",
+                    "status": "ACTIVE",
+                    "balance": 0.0,
+                },
+            ]
 
+        # Get account type if available
+        account_type = "Primary"
+        if hasattr(customer, 'account_type') and customer.account_type:
+            account_type = customer.account_type.value if hasattr(customer.account_type, 'value') else str(customer.account_type)
+
+        # Return actual customer account with balance
         return [
             {
                 "account_number": customer.account_number,
-                "type": "Primary",
+                "type": account_type,
                 "currency": "INR",
                 "status": (
                     customer.status.value
                     if isinstance(customer.status, CustomerStatus)
                     else str(customer.status)
                 ),
+                "balance": float(customer.balance or 0.0),
+                "created_at": customer.created_at.isoformat() if customer.created_at else None,
             }
         ]
 
@@ -138,15 +148,21 @@ class CustomerPortalService:
         }
 
     @staticmethod
-    def recent_transactions(user_id: str, limit: int = 5) -> List[Dict[str, str]]:
+    def recent_transactions(user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         records = CustomerPortalService._user_transactions(user_id, limit=limit)
+        customer = Customer.query.get(user_id)
+        customer_account = customer.account_number if customer else None
+        
         return [
             {
                 "id": tx.id,
+                "from_account": tx.from_account,
                 "to_account": tx.to_account,
                 "amount": float(tx.amount),
+                "purpose": tx.purpose if hasattr(tx, 'purpose') else "",
                 "status": tx.status.value if tx.status else None,
                 "created_at": tx.created_at.isoformat(),
+                "direction": "SENT" if tx.from_account == customer_account else "RECEIVED",
             }
             for tx in records
         ]
@@ -219,3 +235,73 @@ class CustomerPortalService:
             "aggregate_balance": balance,
             "currency": "INR",
         }
+
+    @classmethod
+    def account_summary(cls, user_id: str) -> Dict[str, Any]:
+        """
+        Secure Account Summary for Customer role only.
+        Returns masked account details, balance, and recent activity.
+        """
+        customer = Customer.query.get(user_id)
+        
+        if not customer:
+            # Return minimal fallback for users without customer record
+            return {
+                "error": "Account not found",
+                "message": "No customer account associated with this user"
+            }
+        
+        # Mask account number (show last 4 digits only)
+        masked_account = cls._mask_account_number(customer.account_number)
+        
+        # Get recent transactions (last 5)
+        recent_txns = cls._user_transactions(user_id, limit=5)
+        transactions_summary = [
+            {
+                "id": tx.id,
+                "from_account": cls._mask_account_number(tx.from_account),
+                "to_account": cls._mask_account_number(tx.to_account),
+                "amount": float(tx.amount),
+                "purpose": tx.purpose if hasattr(tx, 'purpose') else "",
+                "status": tx.status.value if tx.status else "UNKNOWN",
+                "created_at": cls._format_timestamp(tx.created_at),
+                "direction": "SENT" if tx.from_account == customer.account_number else "RECEIVED"
+            }
+            for tx in recent_txns
+        ]
+        
+        # Calculate balance
+        balance = float(customer.balance or 0.0)
+        
+        # Get account type and status
+        account_type = customer.account_type.value if hasattr(customer, 'account_type') and customer.account_type else "SAVINGS"
+        account_status = customer.status.value if customer.status else "ACTIVE"
+        branch_code = getattr(customer, 'branch_code', 'MUM-HQ') or 'MUM-HQ'
+        
+        return {
+            "account_details": {
+                "account_number_masked": masked_account,
+                "account_number_full": customer.account_number,  # For internal use only
+                "account_type": account_type,
+                "account_status": account_status,
+                "branch_code": branch_code,
+                "opening_date": cls._format_timestamp(customer.created_at),
+            },
+            "balance_info": {
+                "available_balance": balance,
+                "currency": "INR",
+                "last_updated": cls._format_timestamp(customer.updated_at),
+            },
+            "recent_activity": transactions_summary,
+            "metadata": {
+                "total_transactions": len(recent_txns),
+                "account_holder": customer.name,
+            }
+        }
+    
+    @staticmethod
+    def _mask_account_number(account_number: str) -> str:
+        """Mask account number showing only last 4 digits."""
+        if not account_number or len(account_number) < 4:
+            return "****"
+        return f"****{account_number[-4:]}"

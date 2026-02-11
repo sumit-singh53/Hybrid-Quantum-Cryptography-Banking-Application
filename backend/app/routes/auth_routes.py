@@ -181,18 +181,32 @@ def _ensure_user_record(*, user_id: str, username: str, full_name: str, email: s
         user = User.query.filter_by(username=user_id).first()
     
     if user:
+        # Keep existing mobile/address/aadhar/pan if present, otherwise default to empty
         user.username = username  # Update to proper username if it was UUID
         user.full_name = full_name
         user.email = email
         user.role_id = role.id
         user.is_active = True
+        if user.mobile is None:
+            user.mobile = ""
+        if user.address is None:
+            user.address = None
+        if user.aadhar is None:
+            user.aadhar = None
+        if user.pan is None:
+            user.pan = None
     else:
+        # Provide sensible defaults for fields that are required by the schema
         user = User(
             username=username,
             full_name=full_name,
             email=email,
+            mobile="",
+            address=None,
+            aadhar=None,
+            pan=None,
             role_id=role.id,
-            is_active=True
+            is_active=True,
         )
         db.session.add(user)
     
@@ -415,18 +429,24 @@ def certificate_challenge():
     payload = request.get_json(silent=True) or {}
     certificate_id = (payload.get("certificate_id") or "").strip()
     device_id = (payload.get("device_id") or "").strip()
+    
+    current_app.logger.info(f"[DEBUG] certificate_id: {certificate_id}, device_id: {device_id}")
 
     if not certificate_id or not device_id:
         return jsonify({"message": "certificate_id and device_id are required"}), 400
 
     try:
         certificate, _ = CertificateService.load_certificate_payload(certificate_id)
+        current_app.logger.info(f"[DEBUG] Certificate loaded successfully")
     except FileNotFoundError:
+        current_app.logger.error(f"[DEBUG] Certificate not found for ID: {certificate_id}")
         return jsonify({"message": "Certificate not found"}), 404
 
     try:
         cert_payload = CertificateService.verify_certificate(certificate)
+        current_app.logger.info(f"[DEBUG] Certificate verified, user_id: {cert_payload.get('user_id')}")
     except Exception as exc:
+        current_app.logger.error(f"[DEBUG] Certificate verification failed: {exc}")
         return jsonify({"message": str(exc)}), 403
 
     response_payload = {
@@ -438,6 +458,7 @@ def certificate_challenge():
         },
     }
     stored_secret = DeviceBindingStore.get_secret(cert_payload["user_id"])
+    current_app.logger.info(f"[DEBUG] user_id: {cert_payload['user_id']}, stored_secret exists: {stored_secret is not None}")
     if not stored_secret:
         return jsonify({"message": "Device binding not found"}), 403
 

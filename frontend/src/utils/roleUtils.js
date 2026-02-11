@@ -21,9 +21,9 @@ export const getDashboardPathByRole = (role) => {
         case ROLES.AUDITOR_CLERK:
             return "/dashboard";
         case ROLES.MANAGER:
-            return "/dashboard/manager";
+            return "/manager/dashboard";
         case ROLES.SYSTEM_ADMIN:
-            return "/system-admin/dashboard";
+            return "/admin/dashboard";
         default:
             return "/login";
     }

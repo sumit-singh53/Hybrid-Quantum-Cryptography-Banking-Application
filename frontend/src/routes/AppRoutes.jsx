@@ -15,10 +15,14 @@ import ManagerDashboard from "../pages/manager/ManagerDashboard";
 import AccountsOverview from "../pages/customer/AccountsOverview";
 import ProfileSwitcher from "../pages/customer/ProfileSwitcher";
 import SecurityCenter from "../pages/customer/SecurityCenter";
+import BeneficiaryManagement from "../pages/customer/BeneficiaryManagement";
 import ManagerCustomers from "../pages/manager/ManagerCustomers";
 import ManagerCertificates from "../pages/manager/ManagerCertificates";
 import ManagerReports from "../pages/manager/ManagerReports";
 import BranchAudit from "../pages/manager/BranchAudit";
+import KYCVerification from "../pages/manager/KYCVerification";
+import CustomerAccounts from "../pages/manager/CustomerAccounts";
+import AccountMonitoring from "../pages/manager/AccountMonitoring"; // Account Monitoring Page
 
 /* Common */
 import PublicHeader from "../components/public/PublicHeader";
@@ -26,26 +30,32 @@ import CustomerNavbar from "../components/common/CustomerNavbar";
 import ClerkNavbar from "../components/common/ClerkNavbar";
 import ManagerNavbar from "../components/common/ManagerNavbar";
 import AdminNavbar from "../components/common/AdminNavbar";
-import Sidebar from "../components/common/Sidebar";
+import LeftSidebar from "../components/common/LeftSidebar";
 import Footer from "../components/common/Footer";
 import PublicLanding from "../pages/public/PublicLanding";
-import CreateTransaction from "../pages/customer/CreateTransaction";
 import TransactionHistory from "../pages/customer/TransactionHistory";
 import ApproveTransaction from "../pages/manager/ApproveTransaction";
+import ApprovalHistory from "../pages/manager/ApprovalHistory";
+import TransactionRiskAssessment from "../pages/manager/TransactionRiskAssessment";
 import TransactionDetails from "../pages/shared/TransactionDetails";
 import Logout from "../components/auth/Logout";
-import AuditTransactions from "../pages/auditorClerk/AuditTransactions";
+import AuditTransactions from "../pages/auditorClerk/AuditTransactions/AuditTransactions";
 import AuditLogs from "../pages/auditorClerk/AuditLogs";
 import AuditCertificates from "../pages/auditorClerk/AuditCertificates";
 import AuditReports from "../pages/auditorClerk/AuditReports";
 import SystemAdminDashboard from "../pages/admin/SystemAdminDashboard";
 import SystemAdminUserInventory from "../pages/admin/SystemAdminUserInventory";
-import SystemAdminRoleInsights from "../pages/admin/SystemAdminRoleInsights";
+import SystemAdminRoleManagement from "../pages/admin/SystemAdminRoleManagement";
 import SystemAdminCertificateStudio from "../pages/admin/SystemAdminCertificateStudio";
 import SystemAdminCrlCenter from "../pages/admin/SystemAdminCrlCenter";
 import SystemAdminAuthorityHub from "../pages/admin/SystemAdminAuthorityHub";
 import SystemAdminSecurityOps from "../pages/admin/SystemAdminSecurityOps";
 import SystemAdminAuditNetwork from "../pages/admin/SystemAdminAuditNetwork";
+import SystemMonitoring from "../pages/admin/SystemMonitoring";
+import CreateTransaction from "../pages/customer/CreateTransaction/CreateTransaction";
+import DownloadStatement from "../pages/customer/DownloadStatement";
+import ProfileSettings from "../pages/customer/ProfileSettings";
+import CertificateRequest from "../pages/customer/CertificateRequest";
 
 const AuthenticatedLayout = ({ isAuthenticated }) => {
   const { role } = useRole();
@@ -92,8 +102,8 @@ const AuthenticatedLayout = ({ isAuthenticated }) => {
       
       <NavbarComponent />
       <div className="relative flex-1 z-10">
-        <div className="flex w-full flex-col gap-6 px-0 pb-8 pt-0 sm:px-4 sm:pt-0 lg:flex-row lg:items-start lg:gap-8 lg:pl-0 lg:pr-8 lg:pt-0">
-          {isAuthenticated && <Sidebar />}
+        <div className="flex w-full flex-col gap-6 px-0 pb-8 pt-0 sm:pr-4 sm:pt-0 lg:flex-row lg:items-start lg:gap-8 lg:pl-0 lg:pr-8 lg:pt-0">
+          {isAuthenticated && <LeftSidebar />}
 
           <main className={`mt-4 flex-1 rounded-[32px] border p-4 shadow-2xl backdrop-blur-xl lg:mt-6 lg:p-8 ${
             isAdminPanel
@@ -143,9 +153,9 @@ const AppRoutes = () => {
       case "auditor_clerk":
         return "/dashboard";
       case "manager":
-        return "/dashboard/manager";
+        return "/manager/dashboard";
       case "system_admin":
-        return "/system-admin/dashboard";
+        return "/admin/dashboard";
       default:
         return "/login";
     }
@@ -228,7 +238,7 @@ const AppRoutes = () => {
           element={<Navigate to="/dashboard" replace />}
         />
         <Route
-          path="/dashboard/manager"
+          path="/manager/dashboard"
           element={
             <ProtectedRoute allowedRoles={["manager"]}>
               <ManagerDashboard />
@@ -288,6 +298,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/statements/download"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <DownloadStatement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/accounts"
           element={
             <ProtectedRoute allowedRoles={["customer"]}>
@@ -296,10 +314,34 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/customer/beneficiaries"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <BeneficiaryManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/profile"
           element={
             <ProtectedRoute allowedRoles={["customer", "auditor_clerk"]}>
               <ProfileSwitcher />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/settings"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <ProfileSettings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customer/certificates"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <CertificateRequest />
             </ProtectedRoute>
           }
         />
@@ -316,6 +358,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={["manager"]}>
               <ApproveTransaction />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/approvals/pending"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <ApproveTransaction />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/approvals/history"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <ApprovalHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/risk-assessment"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <TransactionRiskAssessment />
             </ProtectedRoute>
           }
         />
@@ -351,13 +417,45 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        {/* System Admin */}
         <Route
-          path="/system-admin"
-          element={<Navigate to="/system-admin/dashboard" replace />}
+          path="/manager/kyc-verification"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <KYCVerification />
+            </ProtectedRoute>
+          }
         />
         <Route
-          path="/system-admin/dashboard"
+          path="/manager/account-monitoring"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <AccountMonitoring />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/accounts"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <CustomerAccounts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/customer-accounts"
+          element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <CustomerAccounts />
+            </ProtectedRoute>
+          }
+        />
+        {/* System Admin */}
+        <Route
+          path="/admin"
+          element={<Navigate to="/admin/dashboard" replace />}
+        />
+        <Route
+          path="/admin/dashboard"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminDashboard />
@@ -365,7 +463,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/users"
+          path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminUserInventory />
@@ -373,15 +471,15 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/roles"
+          path="/admin/roles"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
-              <SystemAdminRoleInsights />
+              <SystemAdminRoleManagement />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/system-admin/certificates/issue"
+          path="/admin/certificates/issue"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminCertificateStudio />
@@ -389,7 +487,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/certificates/crl"
+          path="/admin/certificates/crl"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminCrlCenter />
@@ -397,7 +495,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/ca"
+          path="/admin/cryptography"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminAuthorityHub />
@@ -405,7 +503,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/system-security"
+          path="/admin/system-security"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminSecurityOps />
@@ -413,7 +511,15 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/system-admin/audit/global"
+          path="/admin/monitoring"
+          element={
+            <ProtectedRoute allowedRoles={["system_admin"]}>
+              <SystemMonitoring />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/audit/global"
           element={
             <ProtectedRoute allowedRoles={["system_admin"]}>
               <SystemAdminAuditNetwork />
@@ -456,3 +562,4 @@ const AppRoutes = () => {
 };
 
 export default AppRoutes;
+

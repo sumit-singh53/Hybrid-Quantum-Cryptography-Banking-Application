@@ -25,11 +25,32 @@ class TransferAuditStore:
     @classmethod
     def _load(cls) -> List[Dict[str, Any]]:
         cls._ensure_store()
-        with cls.STORE_PATH.open("r", encoding="utf-8") as handle:
-            data = json.load(handle)
-        if not isinstance(data, list):
-            raise RuntimeError("Transfer audit log store corrupted")
-        return data
+        try:
+            with cls.STORE_PATH.open("r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if not isinstance(data, list):
+                raise RuntimeError("Transfer audit log store corrupted")
+            return data
+        except (json.JSONDecodeError, RuntimeError) as e:
+            # If JSON is corrupted, backup the bad file and start fresh
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Corrupted transfer audit log detected: {e}. Creating backup and starting fresh.")
+            
+            # Backup corrupted file with timestamp to avoid conflicts
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            backup_path = cls.STORE_PATH.with_suffix(f'.json.corrupted.{timestamp}')
+            
+            if cls.STORE_PATH.exists():
+                try:
+                    cls.STORE_PATH.rename(backup_path)
+                except (FileExistsError, OSError) as rename_err:
+                    logger.warning(f"Could not rename corrupted file: {rename_err}. Deleting instead.")
+                    cls.STORE_PATH.unlink(missing_ok=True)
+            
+            # Create fresh empty log
+            cls.STORE_PATH.write_text("[]", encoding="utf-8")
+            return []
 
     @classmethod
     def _save(cls, data: List[Dict[str, Any]]) -> None:

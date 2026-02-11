@@ -301,6 +301,15 @@ class TransactionService:
                 if direction == "SENT"
                 else payload["from_account"]
             )
+            
+            # Enrich with counterparty name
+            counterparty_account = payload["counterparty_account"]
+            counterparty = Customer.query.filter_by(account_number=counterparty_account).first()
+            if counterparty:
+                payload["counterparty_name"] = counterparty.name
+            else:
+                payload["counterparty_name"] = "Unknown"
+            
             enriched.append(payload)
 
         return enriched
@@ -308,30 +317,57 @@ class TransactionService:
     @staticmethod
     def get_transaction_detail(tx_id: str, user: Dict[str, str]):
         role = (user.get("role") or "").lower()
-        if role != "customer":
-            raise PermissionError("Only customers may view transaction details")
+        user_id = user.get("id")
+        
+        if not user_id:
+            raise ValueError("User identifier missing")
 
-        customer_id = user.get("id")
-        if not customer_id:
-            raise ValueError("Customer identifier missing")
-
-        profile = TransactionService._resolve_customer_profile(customer_id)
         tx = TransactionService._get_transaction(tx_id)
+        
+        # Auditors, managers, and system admins can view all transactions
+        if role in ["auditor_clerk", "manager", "system_admin"]:
+            payload = tx.to_dict()
+            
+            # Enrich with sender and recipient names
+            sender = Customer.query.filter_by(account_number=tx.from_account).first()
+            recipient = Customer.query.filter_by(account_number=tx.to_account).first()
+            
+            payload["sender_name"] = sender.name if sender else "Unknown"
+            payload["recipient_name"] = recipient.name if recipient else "Unknown"
+            payload["from_account"] = tx.from_account
+            payload["to_account"] = tx.to_account
+            
+            return payload
+        
+        # Customers can only view their own transactions
+        if role == "customer":
+            profile = TransactionService._resolve_customer_profile(user_id)
+            
+            direction = TransactionService._direction_for_customer(
+                tx,
+                customer_id=user_id,
+                account_number=profile.account_number,
+            )
+            if not direction:
+                raise PermissionError("You do not have access to this transaction")
 
-        direction = TransactionService._direction_for_customer(
-            tx,
-            customer_id=customer_id,
-            account_number=profile.account_number,
-        )
-        if not direction:
-            raise PermissionError("You do not have access to this transaction")
-
-        payload = tx.to_dict()
-        payload["direction"] = direction
-        payload["counterparty_account"] = (
-            payload["to_account"] if direction == "SENT" else payload["from_account"]
-        )
-        return payload
+            payload = tx.to_dict()
+            payload["direction"] = direction
+            payload["counterparty_account"] = (
+                payload["to_account"] if direction == "SENT" else payload["from_account"]
+            )
+            
+            # Enrich with counterparty name
+            counterparty_account = payload["counterparty_account"]
+            counterparty = Customer.query.filter_by(account_number=counterparty_account).first()
+            if counterparty:
+                payload["counterparty_name"] = counterparty.name
+            else:
+                payload["counterparty_name"] = "Unknown"
+            
+            return payload
+        
+        raise PermissionError("Invalid role for viewing transaction details")
 
     # =========================================
     # AUDITOR_CLERK: View all transactions

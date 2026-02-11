@@ -45,7 +45,7 @@ const navConfig = {
     title: "Manager",
     description: "Operations & oversight",
     links: [
-      { to: "/dashboard/manager", label: "Dashboard", icon: HomeIcon },
+      { to: "/manager/dashboard", label: "Dashboard", icon: HomeIcon },
       {
         to: "/transactions/approvals",
         label: "Approvals",
@@ -87,35 +87,35 @@ const navConfig = {
     title: "System admin",
     description: "PKI, CRL, and global telemetry",
     links: [
-      { to: "/system-admin/dashboard", label: "Admin control", icon: HomeIcon },
+      { to: "/admin/dashboard", label: "Admin control", icon: HomeIcon },
       {
-        to: "/system-admin/users",
+        to: "/admin/users",
         label: "User inventory",
         icon: UserGroupIcon,
       },
-      { to: "/system-admin/roles", label: "Role insights", icon: UserIcon },
+      { to: "/admin/roles", label: "Role insights", icon: UserIcon },
       {
-        to: "/system-admin/certificates/issue",
+        to: "/admin/certificates/issue",
         label: "Issue certificate",
         icon: ShieldCheckIcon,
       },
       {
-        to: "/system-admin/certificates/crl",
+        to: "/admin/certificates/crl",
         label: "CRL oversight",
         icon: ClipboardDocumentCheckIcon,
       },
       {
-        to: "/system-admin/ca",
+        to: "/admin/ca",
         label: "Authority controls",
         icon: LockClosedIcon,
       },
       {
-        to: "/system-admin/system-security",
+        to: "/admin/system-security",
         label: "System security",
         icon: ShieldCheckIcon,
       },
       {
-        to: "/system-admin/audit/global",
+        to: "/admin/audit/global",
         label: "Global audit",
         icon: DocumentCheckIcon,
       },
@@ -124,27 +124,10 @@ const navConfig = {
   },
 };
 
-const isDesktopViewport = () =>
-  typeof window !== "undefined" ? window.innerWidth >= 1024 : false;
-
 const Sidebar = () => {
   const { role } = useRole();
-  const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const nav = navConfig[role];
-
-  useEffect(() => {
-    const handleResize = () => {
-      const desktop = isDesktopViewport();
-      setIsDesktop(desktop);
-      if (desktop) {
-        setIsCollapsed(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   if (!nav) {
     return (
@@ -154,25 +137,15 @@ const Sidebar = () => {
     );
   }
 
-  const handleToggle = () => setIsCollapsed((prev) => !prev);
-  const handleNavClick = () => {
-    if (!isDesktop) {
-      setIsCollapsed(true);
-    }
-  };
-
-  const collapseForDesktop = isDesktop && isCollapsed;
-  const iconOnlyMode = collapseForDesktop;
-
   const isAdminRole = role === ROLES.SYSTEM_ADMIN;
 
   return (
     <aside
-      className={`mt-4 w-full self-start pt-0 transition-[max-width] duration-300 lg:mt-6 lg:ml-4 lg:flex-none ${
-        collapseForDesktop ? "lg:max-w-[5.5rem]" : "lg:max-w-[18rem]"
+      className={`mt-4 w-full self-start text-white pt-0 transition-all duration-300 lg:mt-6 lg:ml-4 lg:flex-none ${
+        isCollapsed ? "lg:max-w-[5rem]" : "lg:max-w-[20rem]"
       }`}
     >
-      {/* Ambient Glow Background */}
+      {/* Ambient Glow Background for Admin */}
       {isAdminRole && (
         <div className="pointer-events-none absolute -inset-20 hidden lg:block">
           <div className="absolute left-0 top-20 h-96 w-96 rounded-full bg-indigo-500/10 blur-[120px] animate-pulse"></div>
@@ -190,39 +163,41 @@ const Sidebar = () => {
           <div className="absolute inset-x-0 -top-px mx-auto h-px w-3/4 bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
         )}
         
+        {/* Header */}
         <div className="flex items-center justify-between gap-3">
-          {(!collapseForDesktop || !isDesktop) && (
-            <div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
               <p className={`text-[0.55rem] uppercase tracking-[0.45em] ${
                 isAdminRole ? 'text-indigo-400/70' : 'text-cyan-600/70'
               }`}>
                 {nav.title}
               </p>
-              <p className={`text-sm ${
+              <p className={`text-sm truncate ${
                 isAdminRole ? 'text-slate-400' : 'text-slate-500'
               }`}>{nav.description}</p>
             </div>
           )}
           <button
             type="button"
-            onClick={handleToggle}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide shadow-sm backdrop-blur transition ${
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`flex-shrink-0 inline-flex items-center justify-center rounded-full border-2 p-2.5 text-xs font-semibold uppercase tracking-wide shadow-xl backdrop-blur transition hover:scale-110 ${
               isAdminRole
-                ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/20'
-                : 'border-white/70 bg-white/80 text-slate-500 hover:border-cyan-300 hover:text-slate-900'
+                ? 'border-white bg-indigo-600 text-white hover:bg-indigo-500'
+                : 'border-white bg-cyan-500 text-white hover:bg-cyan-600'
             }`}
             aria-expanded={!isCollapsed}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? (
-              <ChevronDoubleRightIcon className="h-4 w-4" />
+              <ChevronDoubleRightIcon className="h-5 w-5 stroke-[3] text-white" />
             ) : (
-              <ChevronDoubleLeftIcon className="h-4 w-4" />
+              <ChevronDoubleLeftIcon className="h-5 w-5 stroke-[3] text-white" />
             )}
           </button>
         </div>
 
+        {/* Navigation Links */}
         <ul className="list-none space-y-2.5 transition-all duration-300">
           {nav.links.map((link) => {
             const isLogout = link.to === "/logout";
@@ -233,62 +208,69 @@ const Sidebar = () => {
                   to={link.to}
                   end
                   title={link.label}
-                  onClick={handleNavClick}
                   className={({ isActive }) => {
+                    const baseClasses = "group relative flex items-center gap-3 rounded-2xl border font-semibold no-underline backdrop-blur transition-all duration-200";
+                    
                     if (isAdminRole) {
-                      return [
-                        "group relative flex items-center rounded-2xl border px-4 py-3 text-sm font-semibold no-underline backdrop-blur transition-all duration-200",
-                        iconOnlyMode ? "justify-start" : "justify-between",
+                      const adminBase = [
+                        baseClasses,
+                        isCollapsed ? "justify-center p-3" : "px-4 py-3",
                         isActive
                           ? "border-indigo-400/50 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-transparent text-indigo-200 shadow-lg shadow-indigo-500/30"
                           : "border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-indigo-400/30 hover:bg-slate-800/60 hover:text-indigo-300",
                         isLogout && "border-rose-400/30 bg-rose-500/10 text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/20"
-                      ].filter(Boolean).join(" ");
+                      ];
+                      return adminBase.filter(Boolean).join(" ");
                     }
-                    return [
-                      "flex items-center rounded-[20px] border border-white/60 bg-white/60 pr-4 pl-3 py-2.5 text-sm font-semibold text-slate-600 no-underline shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500",
-                      iconOnlyMode ? "justify-start" : "justify-between",
+                    
+                    const regularBase = [
+                      baseClasses,
+                      "border-white/60 bg-white/60 shadow-[0_12px_30px_rgba(15,23,42,0.08)]",
+                      isCollapsed ? "justify-center p-3" : "px-4 py-3",
                       isActive
                         ? "border-cyan-300/70 bg-gradient-to-r from-cyan-50 via-white to-white text-cyan-900 shadow shadow-cyan-100"
-                        : "hover:border-cyan-200 hover:bg-white/90 hover:text-slate-900",
-                    ].join(" ");
+                        : "text-slate-600 hover:border-cyan-200 hover:bg-white/90 hover:text-slate-900",
+                    ];
+                    return regularBase.join(" ");
                   }}
                 >
-                  {/* Active Indicator Glow */}
                   {({ isActive }) => (
                     <>
+                      {/* Active Glow for Admin */}
                       {isAdminRole && isActive && (
                         <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-indigo-500/20 to-transparent blur-xl"></div>
                       )}
-                      <span className="flex items-center gap-3">
-                        <Icon
-                          className={`h-5 w-5 transition-colors ${
-                            isAdminRole 
-                              ? (isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400')
-                              : 'text-slate-500'
-                          }`}
-                          aria-hidden="true"
-                        />
-                        <span
-                          className={`text-sm font-medium transition-opacity duration-150 ${
-                            iconOnlyMode ? "hidden" : "block"
-                          } ${
+                      
+                      {/* Icon */}
+                      <Icon
+                        className={`h-5 w-5 flex-shrink-0 transition-colors ${
+                          isAdminRole 
+                            ? (isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400')
+                            : (isActive ? 'text-cyan-600' : 'text-slate-600 group-hover:text-cyan-600')
+                        }`}
+                        aria-hidden="true"
+                      />
+                      
+                      {/* Label and Dot - Only show when expanded */}
+                      {!isCollapsed && (
+                        <>
+                          <span className={`text-sm font-medium flex-1 ${
                             isAdminRole
                               ? (isActive ? 'text-indigo-200' : 'text-slate-400 group-hover:text-indigo-300')
-                              : 'text-slate-700'
-                          }`}
-                        >
-                          {link.label}
-                        </span>
-                      </span>
-                      {!iconOnlyMode && (
-                        <span
-                          className={`h-2 w-2 rounded-full transition-all ${
-                            isAdminRole
-                              ? (isActive ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : isLogout ? 'bg-rose-400/50' : 'bg-slate-600/50')
-                              : (isLogout ? "bg-rose-400" : "bg-cyan-400/70")
-                          }`}
-                        />
+                              : (isActive ? 'text-cyan-900' : 'text-slate-700')
+                          }`}>
+                            {link.label}
+                          </span>
+                          
+                          {/* Indicator Dot */}
+                          <span
+                            className={`h-2 w-2 rounded-full flex-shrink-0 transition-all ${
+                              isAdminRole
+                                ? (isActive ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : isLogout ? 'bg-rose-400/50' : 'bg-slate-600/50')
+                                : (isLogout ? "bg-rose-400" : isActive ? "bg-cyan-400" : "bg-cyan-400/70")
+                            }`}
+                          />
+                        </>
                       )}
                     </>
                   )}
@@ -303,3 +285,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

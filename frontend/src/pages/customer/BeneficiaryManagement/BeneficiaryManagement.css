@@ -1,0 +1,31 @@
+/* Beneficiary Management Styles */
+.beneficiary-management-container {
+  font-family: 'Space Grotesk', 'Segoe_UI', sans-serif;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.beneficiary-management-container > * {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .beneficiary-management-container h2 {
+    font-size: 1.75rem;
+  }
+  
+  .beneficiary-management-container table {
+    font-size: 0.75rem;
+  }
+}

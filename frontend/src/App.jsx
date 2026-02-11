@@ -1,5 +1,5 @@
 import React from "react";
-import AppRoutes from "./routes/AppRoutes";
+import ComprehensiveRoutes from "./routes/ComprehensiveRoutes";
 import { useAuth } from "./context/AuthContext";
 
 const App = () => {
@@ -57,7 +57,7 @@ const App = () => {
     );
   }
 
-  return <AppRoutes />;
+  return <ComprehensiveRoutes />;
 };
 
 export default App;

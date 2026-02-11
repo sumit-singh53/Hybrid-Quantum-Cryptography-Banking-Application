@@ -18,11 +18,11 @@ const DashboardSwitcher = () => {
   }
 
   if (role === ROLES.MANAGER) {
-    return <Navigate to="/dashboard/manager" replace />;
+    return <Navigate to="/manager/dashboard" replace />;
   }
 
   if (role === ROLES.SYSTEM_ADMIN) {
-    return <Navigate to="/system-admin/dashboard" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <Navigate to="/login" replace />;

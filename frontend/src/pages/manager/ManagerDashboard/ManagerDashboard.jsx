@@ -37,6 +37,18 @@ const ManagerDashboard = () => {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState({});
 
+  // Get user info from localStorage
+  const getUserInfo = () => {
+    try {
+      const userStr = localStorage.getItem("pq_user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const user = getUserInfo();
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -196,13 +208,20 @@ const ManagerDashboard = () => {
     <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-3xl font-semibold text-slate-900">
-            Manager Operations Center
-          </h2>
           <p className="mt-2 text-base text-slate-600">
             Review pending approvals, monitor certificate posture, and keep an eye
             on branch anomalies.
           </p>
+          {user && user.role && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1">
+              <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="text-sm font-medium text-indigo-900">
+                Role: <span className="font-semibold capitalize">{user.role.name || user.role}</span>
+              </span>
+            </div>
+          )}
         </div>
         <button
           onClick={handleRefresh}

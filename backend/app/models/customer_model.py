@@ -7,6 +7,19 @@ from app.config.database import db
 class CustomerStatus(enum.Enum):
     ACTIVE = "ACTIVE"
     FROZEN = "FROZEN"
+    LIMITED = "LIMITED"
+
+
+class AccountType(enum.Enum):
+    SAVINGS = "SAVINGS"
+    CURRENT = "CURRENT"
+    PRIMARY = "PRIMARY"
+
+
+class AccountType(enum.Enum):
+    SAVINGS = "SAVINGS"
+    CURRENT = "CURRENT"
+    PRIMARY = "PRIMARY"
 
 
 class Customer(db.Model):
@@ -19,6 +32,10 @@ class Customer(db.Model):
     status = db.Column(
         db.Enum(CustomerStatus), nullable=False, default=CustomerStatus.ACTIVE
     )
+    account_type = db.Column(
+        db.Enum(AccountType), nullable=False, default=AccountType.SAVINGS
+    )
+    branch_code = db.Column(db.String(32), nullable=True, default="MUM-HQ")
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(

@@ -1,5 +1,5 @@
 export const siteIdentity = {
-    eyebrow: "Hybrid banking",
-    headline: "Post-Quantum Control Plane",
+    eyebrow: "POST-QUANTUM BANKING",
+    headline: "PQC + RSA/ECC Banking System",
     acronym: "PQ",
 };

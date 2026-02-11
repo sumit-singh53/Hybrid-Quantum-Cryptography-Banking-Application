@@ -1,40 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import systemAdminService from "../../../services/systemAdminService";
-import RolePulse from "../RolePulse";
+import UserFormModal from "../../../components/admin/UserFormModal";
+import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
 import "./SystemAdminUserInventory.css";
 
-const MANAGED_ROLE_OPTIONS = [
-  { value: "customer", label: "Customer" },
-  { value: "auditor_clerk", label: "Auditor clerk" },
-  { value: "manager", label: "Manager" },
-];
-
-const INITIAL_USER_FORM = {
-  username: "",
-  fullName: "",
-  email: "",
-  role: MANAGED_ROLE_OPTIONS[0].value,
-  isActive: true,
-};
-
 const SystemAdminUserInventory = () => {
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [summaryError, setSummaryError] = useState(null);
-
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState("");
   const [userBanner, setUserBanner] = useState("");
-  const [userForm, setUserForm] = useState(() => ({ ...INITIAL_USER_FORM }));
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [userSubmitting, setUserSubmitting] = useState(false);
   const [search, setSearch] = useState("");
-
-  const managedRoleParam = useMemo(
-    () => MANAGED_ROLE_OPTIONS.map((option) => option.value).join(","),
-    [],
-  );
+  
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userSubmitting, setUserSubmitting] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -44,34 +26,18 @@ const SystemAdminUserInventory = () => {
       const username = (user.username || "").toLowerCase();
       const fullName = (user.full_name || "").toLowerCase();
       const email = (user.email || "").toLowerCase();
+      const mobile = (user.mobile || "").toLowerCase();
       const role = (user.role || "").toLowerCase();
-      return username.includes(query) || fullName.includes(query) || email.includes(query) || role.includes(query);
+      return username.includes(query) || fullName.includes(query) || 
+             email.includes(query) || mobile.includes(query) || role.includes(query);
     });
   }, [users, search]);
-
-  const loadSummary = useCallback(async () => {
-    setSummaryError(null);
-    setSummaryLoading(true);
-    try {
-      const payload = await systemAdminService.getCertificateSummary();
-      setSummary(payload || {});
-    } catch (error) {
-      const message = error?.response?.data?.message || error?.message;
-      setSummaryError(message || "Unable to load certificate inventory");
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     setUsersError("");
     try {
-      const payload = await systemAdminService.listUsers({ roles: managedRoleParam });
+      const payload = await systemAdminService.listUsers();
       setUsers(payload?.users || []);
     } catch (error) {
       const message = error?.response?.data?.message || error?.message;
@@ -79,45 +45,72 @@ const SystemAdminUserInventory = () => {
     } finally {
       setUsersLoading(false);
     }
-  }, [managedRoleParam]);
+  }, []);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
-  const resetUserForm = () => {
-    setUserForm({ ...INITIAL_USER_FORM });
-    setEditingUserId(null);
+  // Handle Add User
+  const handleAddUser = () => {
+    setSelectedUser(null);
+    setUsersError("");
+    setUserBanner("");
+    setShowAddModal(true);
   };
 
-  const handleUserSubmit = async (event) => {
-    event.preventDefault();
+  // Handle Edit User
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setUsersError("");
+    setUserBanner("");
+    setShowEditModal(true);
+  };
+
+  // Handle Delete User
+  const handleDeleteUser = (user) => {
+    setSelectedUser(user);
+    setUsersError("");
+    setUserBanner("");
+    setShowDeleteModal(true);
+  };
+
+  // Submit Add/Edit
+  const handleSubmitUser = async (formData) => {
     setUsersError("");
     setUserBanner("");
 
     const payload = {
-      username: userForm.username.trim(),
-      full_name: userForm.fullName.trim(),
-      email: userForm.email.trim(),
-      role: userForm.role,
-      is_active: userForm.isActive,
+      username: formData.username.trim(),
+      full_name: formData.fullName.trim(),
+      email: formData.email.trim() || null,
+      mobile: formData.mobile.trim(),
+      address: formData.address.trim() || null,
+      aadhar: formData.aadhar.trim() || null,
+      pan: formData.pan.trim().toUpperCase() || null,
+      role: formData.role,
+      is_active: formData.isActive,
     };
 
-    if (!payload.username || !payload.full_name || !payload.email) {
-      setUsersError("Username, full name, and email are required.");
-      return;
+    // Add password only if provided
+    if (formData.password) {
+      payload.password = formData.password;
     }
 
     setUserSubmitting(true);
     try {
-      if (editingUserId) {
-        await systemAdminService.updateUser(editingUserId, payload);
-        setUserBanner(`Updated user "${payload.username}"`);
+      if (selectedUser) {
+        // Update existing user
+        await systemAdminService.updateUser(selectedUser.id, payload);
+        setUserBanner(`Updated user "${payload.username}" successfully`);
+        setShowEditModal(false);
       } else {
+        // Create new user
         await systemAdminService.createUser(payload);
-        setUserBanner(`Created user "${payload.username}"`);
+        setUserBanner(`Created user "${payload.username}" successfully`);
+        setShowAddModal(false);
       }
-      resetUserForm();
+      setSelectedUser(null);
       await loadUsers();
     } catch (error) {
       const message = error?.response?.data?.message || error?.message;
@@ -127,291 +120,177 @@ const SystemAdminUserInventory = () => {
     }
   };
 
-  const handleUserEdit = (user) => {
-    setEditingUserId(user.id);
-    setUserBanner("");
-    setUsersError("");
-    setUserForm({
-      username: user.username || "",
-      fullName: user.full_name || "",
-      email: user.email || "",
-      role: user.role || MANAGED_ROLE_OPTIONS[0].value,
-      isActive: user.is_active !== false,
-    });
-  };
+  // Confirm Delete
+  const handleConfirmDelete = async (user) => {
+    if (!user || !user.id) return;
 
-  const handleUserDelete = async (user) => {
-    if (!user || !user.id) {
-      return;
-    }
-    const confirmed =
-      typeof window === "undefined" ||
-      window.confirm(`Delete ${user.username || "user"}? This cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
     setUsersError("");
     setUserBanner("");
+    setUserSubmitting(true);
+
     try {
       await systemAdminService.deleteUser(user.id);
-      if (editingUserId === user.id) {
-        resetUserForm();
-      }
-      setUserBanner(`Deleted user "${user.username}"`);
+      setUserBanner(`Deleted user "${user.username}" successfully`);
+      setShowDeleteModal(false);
+      setSelectedUser(null);
       await loadUsers();
     } catch (error) {
       const message = error?.response?.data?.message || error?.message;
       setUsersError(message || "Unable to delete user");
+    } finally {
+      setUserSubmitting(false);
+    }
+  };
+
+  // Close modals
+  const closeModals = () => {
+    if (!userSubmitting) {
+      setShowAddModal(false);
+      setShowEditModal(false);
+      setShowDeleteModal(false);
+      setSelectedUser(null);
     }
   };
 
   return (
-    <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif] text-slate-100">
-      <div className="rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-slate-950 via-slate-900/80 to-indigo-950 p-6 shadow-2xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex-1">
-            <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-              User inventory
+    <section className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif]">
+      <div className="rounded-3xl border p-6 shadow-xl transition-all duration-300 border-slate-300 bg-white dark:border-slate-900 dark:bg-slate-950/60">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Manage system users and their roles
             </p>
-            <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
-              Manage users & certificates
-            </h1>
-            {summaryError && (
-              <p className="mt-3 text-sm font-medium text-rose-200">
-                ⚠️ {summaryError}
-              </p>
-            )}
           </div>
           <button
-            onClick={loadSummary}
-            disabled={summaryLoading}
-            className="h-fit rounded-2xl border border-cyan-400/40 bg-cyan-500/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleAddUser}
+            className="inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-semibold transition border-indigo-400/40 bg-indigo-500/10 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-500/20 dark:border-indigo-400/40 dark:bg-indigo-500/10 dark:text-indigo-100 dark:hover:border-indigo-200 dark:hover:bg-indigo-500/20"
           >
-            {summaryLoading ? "Syncing" : "Refresh inventory"}
+            <span className="material-icons text-lg">add</span>
+            Add New User
           </button>
         </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
-        <h3 className="text-xl font-semibold text-slate-100">
-          Role distribution
-        </h3>
-        <p className="text-sm text-slate-400">
-          Live tally per privileged role.
-        </p>
-        <div className="mt-6">
-          {summaryLoading && !summary ? (
-            <p className="text-sm text-slate-400">
-              Loading certificate counts…
-            </p>
-          ) : (
-            <RolePulse roleBreakdown={summary?.by_role || {}} />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
-        <h3 className="text-xl font-semibold text-slate-100">
-          Manage privileged users (CRUD)
-        </h3>
-        <p className="text-sm text-slate-400">
-          Provision and sunset customer, auditor clerk, and manager identities.
-        </p>
 
         {/* Search Bar */}
-        <div className="mt-4">
-          <input
-            type="text"
-            placeholder="Search by username, name, email, or role..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-          />
+        <div className="mt-6">
+          <div className="relative">
+            <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Search by username, name, email, mobile, or role..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-2xl border pl-12 pr-4 py-2.5 text-sm transition placeholder:text-slate-500 focus:outline-none focus:ring-2 border-slate-300 bg-white text-slate-900 focus:border-indigo-400 focus:ring-indigo-200 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-indigo-300 dark:focus:ring-indigo-500/40"
+            />
+          </div>
         </div>
 
+        {/* Messages */}
         {(usersError || userBanner) && (
           <div className="mt-4 space-y-2">
             {usersError && (
-              <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                ⚠️ {usersError}
-              </p>
+              <div className="rounded-2xl border px-4 py-3 text-sm border-rose-400/40 bg-rose-500/10 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200">
+                <div className="flex items-center gap-2">
+                  <span className="material-icons text-lg">error</span>
+                  {usersError}
+                </div>
+              </div>
             )}
             {userBanner && (
-              <p className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-                {userBanner}
-              </p>
+              <div className="rounded-2xl border px-4 py-3 text-sm border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                <div className="flex items-center gap-2">
+                  <span className="material-icons text-lg">check_circle</span>
+                  {userBanner}
+                </div>
+              </div>
             )}
           </div>
         )}
 
-        <form
-          className="mt-6 grid gap-4 md:grid-cols-[repeat(5,minmax(0,1fr))] lg:grid-cols-[repeat(6,minmax(0,1fr))]"
-          onSubmit={handleUserSubmit}
-        >
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Username
-            <input
-              name="username"
-              value={userForm.username}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, username: event.target.value }))
-              }
-              placeholder="jane.doe"
-              required
-              disabled={userSubmitting}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Full name
-            <input
-              name="fullName"
-              value={userForm.fullName}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, fullName: event.target.value }))
-              }
-              placeholder="Jane Doe"
-              required
-              disabled={userSubmitting}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Email
-            <input
-              type="email"
-              name="email"
-              value={userForm.email}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, email: event.target.value }))
-              }
-              placeholder="jane@example.com"
-              required
-              disabled={userSubmitting}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Role
-            <select
-              name="role"
-              value={userForm.role}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, role: event.target.value }))
-              }
-              disabled={userSubmitting}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-slate-100 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-            >
-              {MANAGED_ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Status
-            <select
-              name="status"
-              value={userForm.isActive ? "active" : "inactive"}
-              onChange={(event) =>
-                setUserForm((prev) => ({
-                  ...prev,
-                  isActive: event.target.value === "active",
-                }))
-              }
-              disabled={userSubmitting}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-slate-100 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <div className="flex items-end gap-3">
-            <button
-              className="w-full rounded-2xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-3 text-sm font-semibold text-indigo-100 transition hover:border-indigo-200 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-              type="submit"
-              disabled={userSubmitting}
-            >
-              {editingUserId ? "Update user" : "Add user"}
-            </button>
-            {editingUserId && (
-              <button
-                type="button"
-                onClick={resetUserForm}
-                disabled={userSubmitting}
-                className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/30 disabled:opacity-60"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-
-        <div className="mt-8 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-900/80 text-left text-sm text-slate-100">
-            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {/* Users Table */}
+        <div className="mt-6 overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-left text-sm">
+            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50">
               <tr>
-                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">Full Name</th>
+                <th className="px-4 py-3">Username</th>
                 <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900/60">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {usersLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-5 text-center text-slate-500">
-                    Loading users…
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="spinner"></div>
+                      Loading users...
+                    </div>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-5 text-center text-slate-500">
-                    {search ? "No users match your search." : "No managed users found."}
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                    {search ? "No users match your search." : "No users found."}
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition">
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                      #{user.id}
+                    </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-semibold text-white">
+                      <p className="font-semibold text-slate-900 dark:text-white">
                         {user.full_name}
                       </p>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">
-                        {user.username}
-                      </p>
                     </td>
-                    <td className="px-4 py-3 text-slate-300">{user.email}</td>
-                    <td className="px-4 py-3 uppercase tracking-wide text-slate-400">
-                      {user.role}
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                      {user.username}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                      {user.email || <span className="text-slate-400 dark:text-slate-500">N/A</span>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                      {user.mobile || <span className="text-slate-400 dark:text-slate-500">N/A</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        {user.role}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                           user.is_active
-                            ? "bg-emerald-500/10 text-emerald-200"
-                            : "bg-amber-500/10 text-amber-200"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                         }`}
                       >
                         {user.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-4 text-sm font-semibold">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => handleUserEdit(user)}
-                          className="text-cyan-200 transition hover:text-cyan-100"
+                          onClick={() => handleEditUser(user)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/50"
                         >
+                          <span className="material-icons text-sm">edit</span>
                           Edit
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleUserDelete(user)}
-                          className="text-rose-300 transition hover:text-rose-200"
+                          onClick={() => handleDeleteUser(user)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50"
                         >
+                          <span className="material-icons text-sm">delete</span>
                           Delete
                         </button>
                       </div>
@@ -423,6 +302,33 @@ const SystemAdminUserInventory = () => {
           </table>
         </div>
       </div>
+
+      {/* Add User Modal */}
+      <UserFormModal
+        isOpen={showAddModal}
+        onClose={closeModals}
+        onSubmit={handleSubmitUser}
+        user={null}
+        isSubmitting={userSubmitting}
+      />
+
+      {/* Edit User Modal */}
+      <UserFormModal
+        isOpen={showEditModal}
+        onClose={closeModals}
+        onSubmit={handleSubmitUser}
+        user={selectedUser}
+        isSubmitting={userSubmitting}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        onClose={closeModals}
+        onConfirm={handleConfirmDelete}
+        user={selectedUser}
+        isDeleting={userSubmitting}
+      />
     </section>
   );
 };

@@ -3,24 +3,28 @@ import "./AccountsOverview.css";
 import {
   fetchCustomerAccounts,
   fetchCustomerTransactions,
+  fetchCustomerAccountSummary,
 } from "../../../services/customerService";
 import { useAuth } from "../../../context/AuthContext";
 
 const AccountsOverview = () => {
   const [accountsData, setAccountsData] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [accountSummary, setAccountSummary] = useState(null);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
     const loadAccounts = async () => {
       try {
-        const [accounts, transactions] = await Promise.all([
+        const [accounts, transactions, summary] = await Promise.all([
           fetchCustomerAccounts(),
           fetchCustomerTransactions(),
+          fetchCustomerAccountSummary().catch(() => null), // Fallback if new endpoint not available
         ]);
         setAccountsData(accounts);
         setRecentTransactions(transactions || []);
+        setAccountSummary(summary);
       } catch (err) {
         setError(
           err?.response?.data?.message || "Unable to load account information",
@@ -55,15 +59,15 @@ const AccountsOverview = () => {
   
   // Get primary account or first account
   const primaryAccount = accountsData.accounts?.[0] || null;
+  
+  // Use account summary data if available
+  const accountType = accountSummary?.account_details?.account_type || "SAVINGS";
+  const accountStatus = accountSummary?.account_details?.account_status || primaryAccount?.status || "ACTIVE";
+  const branchCode = accountSummary?.account_details?.branch_code || "MUM-HQ";
+  const openingDate = accountSummary?.account_details?.opening_date || primaryAccount?.created_at;
 
   return (
     <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
-      <div>
-        <h2 className="text-3xl font-semibold text-slate-900">Account Overview</h2>
-        <p className="mt-2 text-base text-slate-600">
-          Complete profile and account information for your banking identity.
-        </p>
-      </div>
 
       {/* Profile Information Card */}
       <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-8 shadow-lg">
@@ -149,10 +153,40 @@ const AccountsOverview = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Status</p>
-                    <p className="mt-1 text-sm font-medium capitalize text-green-600">{primaryAccount.status || "Active"}</p>
+                    <p className={`mt-1 text-sm font-medium capitalize ${
+                      accountStatus === 'ACTIVE' ? 'text-green-600' : 
+                      accountStatus === 'LIMITED' ? 'text-amber-600' : 'text-rose-600'
+                    }`}>{accountStatus.toLowerCase()}</p>
                   </div>
                 </div>
               )}
+
+              {/* Account Type */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100">
+                  <svg className="h-5 w-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Type</p>
+                  <p className="mt-1 text-sm font-medium capitalize text-slate-900">{accountType.toLowerCase()}</p>
+                </div>
+              </div>
+
+              {/* Branch Code */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+                  <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Branch</p>
+                  <p className="mt-1 font-mono text-sm font-medium text-slate-900">{branchCode}</p>
+                </div>
+              </div>
 
               {/* Member Since */}
               <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -164,7 +198,7 @@ const AccountsOverview = () => {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Member Since</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">
-                    {primaryAccount?.created_at ? new Date(primaryAccount.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'long' }) : "N/A"}
+                    {openingDate ? new Date(openingDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long' }) : "N/A"}
                   </p>
                 </div>
               </div>
@@ -398,6 +432,22 @@ const AccountsOverview = () => {
             </table>
           </div>
         )}
+      </section>
+
+      {/* Security Notice */}
+      <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+        <div className="flex items-start gap-3">
+          <svg className="h-6 w-6 flex-shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-blue-900">Security & Privacy</p>
+            <p className="mt-1 text-sm text-blue-700">
+              Your account information is protected with post-quantum cryptography and strict role-based access control. 
+              Only you can access this data with valid certificate authentication. Account numbers are masked for additional security.
+            </p>
+          </div>
+        </div>
       </section>
     </div>
   );

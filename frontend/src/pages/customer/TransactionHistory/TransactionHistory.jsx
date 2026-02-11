@@ -226,6 +226,7 @@ const TransactionHistory = () => {
       pending: { bg: "bg-amber-50", text: "text-amber-700", label: "Pending" },
       pending_review: { bg: "bg-amber-50", text: "text-amber-700", label: "Pending Review" },
       approved: { bg: "bg-emerald-50", text: "text-emerald-700", label: "Approved" },
+      completed: { bg: "bg-emerald-50", text: "text-emerald-700", label: "Completed" },
       rejected: { bg: "bg-rose-50", text: "text-rose-700", label: "Rejected" },
     };
     const config = statusMap[status?.toLowerCase()] || { bg: "bg-slate-100", text: "text-slate-600", label: status || "Unknown" };
@@ -259,9 +260,6 @@ const TransactionHistory = () => {
     <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm font-['Space_Grotesk','Segoe_UI',sans-serif]">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h3 className="text-2xl font-semibold text-slate-900">
-            Transaction History
-          </h3>
           <p className="text-sm text-slate-600 mt-1">
             {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} found
           </p>
@@ -336,8 +334,8 @@ const TransactionHistory = () => {
           >
             <option value="ALL">All</option>
             <option value="PENDING">Pending</option>
-            <option value="PENDING_REVIEW">Pending Review</option>
             <option value="APPROVED">Approved</option>
+            <option value="COMPLETED">Completed</option>
             <option value="REJECTED">Rejected</option>
           </select>
         </div>
@@ -470,13 +468,17 @@ const TransactionHistory = () => {
                 {paginatedTransactions.map((tx) => {
                   const counterparty =
                     tx.direction === "SENT" ? tx.to_account : tx.from_account;
+                  const counterpartyName = tx.counterparty_name || "Unknown";
                   return (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
                         {renderDirectionBadge(tx.direction)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                        {counterparty}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900">{counterpartyName}</span>
+                          <span className="text-xs text-slate-500 font-mono">{counterparty}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-semibold text-slate-900">
                         ₹{Number(tx.amount).toLocaleString("en-IN")}
@@ -489,15 +491,18 @@ const TransactionHistory = () => {
                         {formatDate(tx.created_at)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => setSelectedTransaction(tx)}
-                          className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
-                        >
-                          View
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedTransaction(tx)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 transition-all hover:shadow-lg hover:scale-105"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -609,20 +614,14 @@ const TransactionHistory = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From Account</p>
-                  <p className="text-sm font-mono text-slate-900">{selectedTransaction.from_account || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To Account</p>
-                  <p className="text-sm font-mono text-slate-900">{selectedTransaction.to_account || '—'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Amount</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    ₹{Number(selectedTransaction.amount).toLocaleString("en-IN")}
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {selectedTransaction.direction === "SENT" ? "To" : "From"}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {selectedTransaction.counterparty_name || "Unknown"}
+                  </p>
+                  <p className="text-xs font-mono text-slate-500 mt-1">
+                    {selectedTransaction.counterparty_account || '—'}
                   </p>
                 </div>
                 <div>
@@ -632,21 +631,29 @@ const TransactionHistory = () => {
               </div>
 
               <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Amount</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  ₹{Number(selectedTransaction.amount).toLocaleString("en-IN")}
+                </p>
+              </div>
+
+              <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Purpose</p>
                 <p className="text-sm text-slate-700">{selectedTransaction.purpose || 'No purpose specified'}</p>
               </div>
 
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Created At</p>
-                <p className="text-sm text-slate-700">{formatDate(selectedTransaction.created_at)}</p>
-              </div>
-
-              {selectedTransaction.approved_at && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Approved At</p>
-                  <p className="text-sm text-slate-700">{formatDate(selectedTransaction.approved_at)}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Created At</p>
+                  <p className="text-sm text-slate-700">{formatDate(selectedTransaction.created_at)}</p>
                 </div>
-              )}
+                {selectedTransaction.approved_at && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Approved At</p>
+                    <p className="text-sm text-slate-700">{formatDate(selectedTransaction.approved_at)}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="mt-8 flex justify-end gap-3">
@@ -658,9 +665,12 @@ const TransactionHistory = () => {
               </button>
               <Link
                 to={`/transactions/${selectedTransaction.id}`}
-                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 transition-all hover:shadow-xl"
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 transition-all hover:shadow-xl hover:scale-105"
               >
-                Full Details
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                View Full Details
               </Link>
             </div>
           </div>

@@ -1,550 +1,705 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  fetchPendingTransactions,
-  decideOnTransaction,
-} from "../../../services/managerService";
+import React, { useEffect, useState } from "react";
+import { fetchPendingTransactions, decideOnTransaction } from "../../../services/managerService";
 import "./ApproveTransaction.css";
 
 const ApproveTransaction = () => {
-  const [queue, setQueue] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [reasonMap, setReasonMap] = useState({});
-  const [filter, setFilter] = useState("all");
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkReason, setBulkReason] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [detailModal, setDetailModal] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(null);
+  const [showApproveModal, setShowApproveModal] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  const loadPending = async () => {
+  // Filter states
+  const [filters, setFilters] = useState({
+    riskLevel: "all",
+    amountRange: "all",
+    sortBy: "date_desc",
+    searchQuery: "",
+  });
+
+  useEffect(() => {
+    loadPendingTransactions();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [transactions, filters]);
+
+  const loadPendingTransactions = async () => {
     setLoading(true);
     try {
       const data = await fetchPendingTransactions();
-      setQueue(data || []);
+      setTransactions(data || []);
       setError(null);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to load transactions");
+      setError(err?.response?.data?.message || "Failed to load pending transactions");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadPending();
-  }, []);
+  const applyFilters = () => {
+    let filtered = [...transactions];
 
-  const filteredQueue = useMemo(() => {
-    let filtered = queue;
-    
-    // Apply filter
-    if (filter === "high") {
-      filtered = filtered.filter((item) => item?.risk?.is_high_value);
-    } else if (filter === "stale") {
-      filtered = filtered.filter((item) => item?.risk?.stale);
-    }
-    
-    // Apply search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((item) => 
-        item.id?.toString().toLowerCase().includes(query) ||
-        item.from_name?.toLowerCase().includes(query) ||
-        item.to_account?.toLowerCase().includes(query) ||
-        item.amount?.toString().includes(query) ||
-        item.branch?.label?.toLowerCase().includes(query)
+    // Risk level filter
+    if (filters.riskLevel !== "all") {
+      filtered = filtered.filter(
+        (tx) => tx.risk?.level === filters.riskLevel
       );
     }
-    
-    // Apply sorting
-    if (sortConfig.key) {
-      filtered = [...filtered].sort((a, b) => {
-        let aVal = a[sortConfig.key];
-        let bVal = b[sortConfig.key];
-        
-        // Handle nested properties
-        if (sortConfig.key === "branch") {
-          aVal = a.branch?.label || "";
-          bVal = b.branch?.label || "";
-        } else if (sortConfig.key === "risk") {
-          aVal = a.risk?.level || "normal";
-          bVal = b.risk?.level || "normal";
-        } else if (sortConfig.key === "amount") {
-          aVal = Number(a.amount) || 0;
-          bVal = Number(b.amount) || 0;
-        }
-        
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    
-    return filtered;
-  }, [queue, filter, searchQuery, sortConfig]);
 
-  const handleDecision = async (id, action) => {
-    const normalized = action.toLowerCase();
-    if (normalized === "reject" && !reasonMap[id]) {
-      setError("Rejection reason is required");
-      return;
+    // Amount range filter
+    if (filters.amountRange !== "all") {
+      const ranges = {
+        low: [0, 10000],
+        medium: [10000, 100000],
+        high: [100000, 1000000],
+        very_high: [1000000, Infinity],
+      };
+      const [min, max] = ranges[filters.amountRange] || [0, Infinity];
+      filtered = filtered.filter(
+        (tx) => tx.amount >= min && tx.amount < max
+      );
     }
+
+    // Search query
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (tx) =>
+          tx.id?.toLowerCase().includes(query) ||
+          tx.from_account?.toLowerCase().includes(query) ||
+          tx.to_account?.toLowerCase().includes(query) ||
+          tx.purpose?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sorting
+    switch (filters.sortBy) {
+      case "date_asc":
+        filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        break;
+      case "date_desc":
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        break;
+      case "amount_asc":
+        filtered.sort((a, b) => a.amount - b.amount);
+        break;
+      case "amount_desc":
+        filtered.sort((a, b) => b.amount - a.amount);
+        break;
+      case "risk_desc":
+        filtered.sort((a, b) => (b.risk?.score || 0) - (a.risk?.score || 0));
+        break;
+      default:
+        break;
+    }
+
+    setFilteredTransactions(filtered);
+  };
+
+  const handleApprove = async (txId) => {
+    setActionLoading(true);
     try {
-      await decideOnTransaction(id, {
-        action: normalized,
-        reason: reasonMap[id],
-      });
-      setReasonMap((prev) => ({ ...prev, [id]: "" }));
-      setSelectedIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-      loadPending();
+      await decideOnTransaction(txId, { action: "approve" });
+      setSuccessMessage("Transaction approved successfully");
+      setShowApproveModal(null);
+      await loadPendingTransactions();
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError(err?.response?.data?.message || "Action failed");
+      setError(err?.response?.data?.message || "Failed to approve transaction");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleBulkAction = async (action) => {
-    if (selectedIds.size === 0) {
-      setError("Please select at least one transaction");
+  const handleReject = async (txId) => {
+    if (!rejectionReason.trim()) {
+      setError("Rejection reason is mandatory");
       return;
     }
-    
-    if (action === "reject" && !bulkReason) {
-      setError("Rejection reason is required for bulk reject");
-      return;
-    }
-    
-    setLoading(true);
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const id of selectedIds) {
-      try {
-        await decideOnTransaction(id, {
-          action,
-          reason: bulkReason || reasonMap[id],
-        });
-        successCount++;
-      } catch (err) {
-        failCount++;
-      }
-    }
-    
-    setSelectedIds(new Set());
-    setBulkReason("");
-    setError(null);
-    
-    if (failCount === 0) {
-      setError(null);
-    } else {
-      setError(`${successCount} succeeded, ${failCount} failed`);
-    }
-    
-    loadPending();
-  };
 
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedIds(new Set(filteredQueue.map(tx => tx.id)));
-    } else {
-      setSelectedIds(new Set());
+    setActionLoading(true);
+    try {
+      await decideOnTransaction(txId, {
+        action: "reject",
+        reason: rejectionReason,
+      });
+      setSuccessMessage("Transaction rejected successfully");
+      setShowRejectModal(null);
+      setRejectionReason("");
+      await loadPendingTransactions();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to reject transaction");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleSelectOne = (id, checked) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(id);
-      } else {
-        newSet.delete(id);
-      }
-      return newSet;
+  const maskAccount = (account) => {
+    if (!account || account.length < 8) return account;
+    return `${account.substring(0, 4)}****${account.substring(account.length - 4)}`;
+  };
+
+  const getRiskBadgeClass = (level) => {
+    switch (level) {
+      case "critical":
+        return "badge-critical";
+      case "elevated":
+        return "badge-elevated";
+      default:
+        return "badge-normal";
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const handleSort = (key) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const exportToCSV = () => {
-    const headers = ["ID", "From", "To Account", "Amount", "Branch", "Risk Level"];
-    const rows = filteredQueue.map(tx => [
-      tx.id,
-      tx.from_name,
-      tx.to_account,
-      tx.amount,
-      tx.branch?.label || "",
-      tx.risk?.level || "normal"
-    ]);
-    
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pending-approvals-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const renderRiskChip = (risk) => {
-    if (!risk) {
-      return (
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-          normal
-        </span>
-      );
-    }
-    const palette = {
-      critical: "bg-rose-100 text-rose-700",
-      elevated: "bg-amber-100 text-amber-700",
-      normal: "bg-emerald-100 text-emerald-700",
-    };
+  if (loading && transactions.length === 0) {
     return (
-      <span
-        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-          palette[risk.level] || "bg-slate-100 text-slate-600"
-        }`}
-      >
-        {risk.level}
-      </span>
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading pending approvals...</p>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif]">
-      <div>
-        <h2 className="text-3xl font-semibold text-slate-900">
-          Pending approvals
-        </h2>
-        <p className="mt-2 text-base text-slate-600">
-          Approve high-value transfers or reject with a policy-bound reason.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <label className="text-sm font-medium text-slate-600">
-            Filter queue:
-          </label>
-          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 sm:max-w-xs"
-            >
-              <option value="all">All pending</option>
-              <option value="high">High value</option>
-              <option value="stale">Stale (&gt;12h)</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Search by ID, customer, account, or amount..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-            <button
-              onClick={loadPending}
-              disabled={loading}
-              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Refreshing…" : "Refresh"}
-            </button>
-            <button
-              onClick={exportToCSV}
-              disabled={filteredQueue.length === 0}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Export CSV
-            </button>
-          </div>
+    <div className="approve-transaction-container">
+      <div className="page-header">
+        <div>
+          <p className="page-subtitle">
+            Review and approve/reject pending transactions. All actions are logged for audit compliance.
+          </p>
         </div>
-
-        {selectedIds.size > 0 && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-            <span className="text-sm font-semibold text-indigo-900">
-              {selectedIds.size} selected
-            </span>
-            <button
-              onClick={() => handleBulkAction("approve")}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            >
-              Approve Selected
-            </button>
-            <button
-              onClick={() => handleBulkAction("reject")}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
-            >
-              Reject Selected
-            </button>
-            <input
-              type="text"
-              placeholder="Reason for bulk reject..."
-              value={bulkReason}
-              onChange={(e) => setBulkReason(e.target.value)}
-              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Clear Selection
-            </button>
-          </div>
-        )}
+        <button
+          onClick={loadPendingTransactions}
+          disabled={loading}
+          className="btn-refresh"
+        >
+          <svg className={`icon ${loading ? "spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {loading ? "Refreshing..." : "Refresh"}
+        </button>
       </div>
 
-      {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-
-      {filteredQueue.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          {searchQuery ? "No transactions match your search." : "Queue is empty."}
-        </p>
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size === filteredQueue.length && filteredQueue.length > 0}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                </th>
-                <th 
-                  className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                  onClick={() => handleSort("id")}
-                >
-                  ID {sortConfig.key === "id" && (sortConfig.direction === "asc" ? "↑" : "↓")}
-                </th>
-                <th className="px-4 py-3">From</th>
-                <th className="px-4 py-3">To</th>
-                <th 
-                  className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                  onClick={() => handleSort("amount")}
-                >
-                  Amount {sortConfig.key === "amount" && (sortConfig.direction === "asc" ? "↑" : "↓")}
-                </th>
-                <th 
-                  className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                  onClick={() => handleSort("branch")}
-                >
-                  Branch {sortConfig.key === "branch" && (sortConfig.direction === "asc" ? "↑" : "↓")}
-                </th>
-                <th 
-                  className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                  onClick={() => handleSort("risk")}
-                >
-                  Risk {sortConfig.key === "risk" && (sortConfig.direction === "asc" ? "↑" : "↓")}
-                </th>
-                <th className="px-4 py-3">Decision</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredQueue.map((tx) => (
-                <tr key={tx.id} className={selectedIds.has(tx.id) ? "bg-indigo-50" : ""}>
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(tx.id)}
-                      onChange={(e) => handleSelectOne(tx.id, e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">{tx.id}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setDetailModal(tx)}
-                      className="text-indigo-600 hover:text-indigo-800 hover:underline"
-                    >
-                      {tx.from_name}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                    {tx.to_account}
-                  </td>
-                  <td className="px-4 py-3 font-semibold">
-                    ₹ {Number(tx.amount).toLocaleString("en-IN")}
-                  </td>
-                  <td className="px-4 py-3">{tx.branch?.label}</td>
-                  <td className="px-4 py-3">{renderRiskChip(tx.risk)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => handleDecision(tx.id, "approve")}
-                        className="rounded-2xl bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-400"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleDecision(tx.id, "reject")}
-                        className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                    <textarea
-                      placeholder="Reason (required for reject)"
-                      value={reasonMap[tx.id] || ""}
-                      onChange={(e) =>
-                        setReasonMap((prev) => ({
-                          ...prev,
-                          [tx.id]: e.target.value,
-                        }))
-                      }
-                      className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                      rows={3}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="alert alert-error">
+          <svg className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {error}
+          <button onClick={() => setError(null)} className="alert-close">×</button>
         </div>
       )}
 
-      {/* Transaction Detail Modal */}
-      {detailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-white p-6">
-              <div>
-                <h3 className="text-2xl font-semibold text-slate-900">Transaction Details</h3>
-                <p className="mt-1 font-mono text-sm text-slate-500">{detailModal.id}</p>
+      {successMessage && (
+        <div className="alert alert-success">
+          <svg className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {successMessage}
+        </div>
+      )}
+
+      {/* Filters Section */}
+      <div className="filters-section">
+        <div className="filter-group">
+          <label>Risk Level</label>
+          <select
+            value={filters.riskLevel}
+            onChange={(e) => setFilters({ ...filters, riskLevel: e.target.value })}
+            className="filter-select"
+          >
+            <option value="all">All Levels</option>
+            <option value="critical">Critical</option>
+            <option value="elevated">Elevated</option>
+            <option value="normal">Normal</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Amount Range</label>
+          <select
+            value={filters.amountRange}
+            onChange={(e) => setFilters({ ...filters, amountRange: e.target.value })}
+            className="filter-select"
+          >
+            <option value="all">All Amounts</option>
+            <option value="low">₹0 - ₹10,000</option>
+            <option value="medium">₹10,000 - ₹1,00,000</option>
+            <option value="high">₹1,00,000 - ₹10,00,000</option>
+            <option value="very_high">Above ₹10,00,000</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Sort By</label>
+          <select
+            value={filters.sortBy}
+            onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+            className="filter-select"
+          >
+            <option value="date_desc">Newest First</option>
+            <option value="date_asc">Oldest First</option>
+            <option value="amount_desc">Highest Amount</option>
+            <option value="amount_asc">Lowest Amount</option>
+            <option value="risk_desc">Highest Risk</option>
+          </select>
+        </div>
+
+        <div className="filter-group search-group">
+          <label>Search</label>
+          <input
+            type="text"
+            placeholder="Search by ID, account, or purpose..."
+            value={filters.searchQuery}
+            onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+            className="filter-input"
+          />
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon stat-icon-total">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <p className="stat-label">Total Pending</p>
+            <p className="stat-value">{transactions.length}</p>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon stat-icon-critical">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <p className="stat-label">Critical Risk</p>
+            <p className="stat-value">
+              {transactions.filter((tx) => tx.risk?.level === "critical").length}
+            </p>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon stat-icon-high">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <p className="stat-label">High Value</p>
+            <p className="stat-value">
+              {transactions.filter((tx) => tx.risk?.is_high_value).length}
+            </p>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon stat-icon-stale">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <p className="stat-label">Stale (&gt;12h)</p>
+            <p className="stat-value">
+              {transactions.filter((tx) => tx.risk?.stale).length}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Transactions List */}
+      {filteredTransactions.length === 0 ? (
+        <div className="empty-state">
+          <svg className="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3>No Pending Approvals</h3>
+          <p>All transactions have been processed. Great work!</p>
+        </div>
+      ) : (
+        <div className="transactions-list">
+          {filteredTransactions.map((tx) => (
+            <div key={tx.id} className="transaction-card">
+              <div className="transaction-header">
+                <div className="transaction-id-section">
+                  <span className="transaction-id">{tx.id?.substring(0, 8)}...</span>
+                  <span className={`risk-badge ${getRiskBadgeClass(tx.risk?.level)}`}>
+                    {tx.risk?.level || "normal"}
+                  </span>
+                  {tx.risk?.is_high_value && (
+                    <span className="badge-high-value">High Value</span>
+                  )}
+                  {tx.risk?.stale && (
+                    <span className="badge-stale">Stale</span>
+                  )}
+                </div>
+                <div className="transaction-actions">
+                  <button
+                    onClick={() => setSelectedTransaction(tx)}
+                    className="btn-view-details"
+                  >
+                    View Details
+                  </button>
+                </div>
               </div>
+
+              <div className="transaction-body">
+                <div className="transaction-info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Amount</span>
+                    <span className="info-value amount">
+                      ₹{Number(tx.amount || 0).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">From Account</span>
+                    <span className="info-value">{maskAccount(tx.from_account)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">To Account</span>
+                    <span className="info-value">{maskAccount(tx.to_account)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Created</span>
+                    <span className="info-value">{formatDate(tx.created_at)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Age</span>
+                    <span className="info-value">{tx.age_minutes?.toFixed(0) || 0} minutes</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Branch</span>
+                    <span className="info-value">{tx.branch?.label || "N/A"}</span>
+                  </div>
+                </div>
+
+                <div className="transaction-purpose">
+                  <span className="info-label">Purpose:</span>
+                  <p className="purpose-text">{tx.purpose || "No purpose specified"}</p>
+                </div>
+              </div>
+
+              <div className="transaction-footer">
+                <button
+                  onClick={() => setShowApproveModal(tx.id)}
+                  className="btn-approve"
+                  disabled={actionLoading}
+                >
+                  <svg className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Approve
+                </button>
+                <button
+                  onClick={() => setShowRejectModal(tx.id)}
+                  className="btn-reject"
+                  disabled={actionLoading}
+                >
+                  <svg className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Transaction Details Modal */}
+      {selectedTransaction && (
+        <div className="modal-overlay" onClick={() => setSelectedTransaction(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Transaction Details</h2>
               <button
-                onClick={() => setDetailModal(null)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setSelectedTransaction(null)}
+                className="modal-close"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ×
               </button>
             </div>
+            <div className="modal-body">
+              <div className="detail-section">
+                <h3>Transaction Information</h3>
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <span className="detail-label">Transaction ID</span>
+                    <span className="detail-value">{selectedTransaction.id}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Status</span>
+                    <span className="detail-value">
+                      <span className="badge-pending">PENDING</span>
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Amount</span>
+                    <span className="detail-value amount-large">
+                      ₹{Number(selectedTransaction.amount || 0).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Created At</span>
+                    <span className="detail-value">{formatDate(selectedTransaction.created_at)}</span>
+                  </div>
+                </div>
+              </div>
 
-            <div className="space-y-6 p-6">
-              {/* Risk Assessment */}
-              <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                    <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <div className="detail-section">
+                <h3>Account Information (Masked)</h3>
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <span className="detail-label">From Account</span>
+                    <span className="detail-value">{maskAccount(selectedTransaction.from_account)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">To Account</span>
+                    <span className="detail-value">{maskAccount(selectedTransaction.to_account)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Created By</span>
+                    <span className="detail-value">{selectedTransaction.created_by || "N/A"}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Branch</span>
+                    <span className="detail-value">{selectedTransaction.branch?.label || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-section">
+                <h3>Purpose / Remarks</h3>
+                <p className="purpose-detail">{selectedTransaction.purpose || "No purpose specified"}</p>
+              </div>
+
+              <div className="detail-section">
+                <h3>Risk Assessment</h3>
+                <div className="risk-assessment">
+                  <div className="risk-item">
+                    <span className="risk-label">Risk Level</span>
+                    <span className={`risk-badge ${getRiskBadgeClass(selectedTransaction.risk?.level)}`}>
+                      {selectedTransaction.risk?.level || "normal"}
+                    </span>
+                  </div>
+                  <div className="risk-item">
+                    <span className="risk-label">Risk Score</span>
+                    <span className="risk-value">{selectedTransaction.risk?.score || 0}</span>
+                  </div>
+                  <div className="risk-item">
+                    <span className="risk-label">High Value</span>
+                    <span className={`risk-value ${selectedTransaction.risk?.is_high_value ? "text-warning" : ""}`}>
+                      {selectedTransaction.risk?.is_high_value ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  <div className="risk-item">
+                    <span className="risk-label">Stale Transaction</span>
+                    <span className={`risk-value ${selectedTransaction.risk?.stale ? "text-warning" : ""}`}>
+                      {selectedTransaction.risk?.stale ? "Yes (>12h)" : "No"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-section">
+                <h3>Verification Status</h3>
+                <div className="verification-status">
+                  <div className="verification-item">
+                    <svg className="icon-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
+                    <span>Certificate Verified</span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-amber-900">Risk Assessment</p>
-                    <p className="text-sm text-amber-700">
-                      {detailModal.risk?.level === "critical" ? "Critical - Requires immediate attention" :
-                       detailModal.risk?.level === "elevated" ? "Elevated - Additional review recommended" :
-                       "Normal - Standard processing"}
-                    </p>
+                  <div className="verification-item">
+                    <svg className="icon-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Device Binding Validated</span>
                   </div>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg bg-white/50 p-3">
-                    <p className="text-xs text-amber-600">High Value</p>
-                    <p className="font-semibold text-amber-900">
-                      {detailModal.risk?.is_high_value ? "Yes" : "No"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-white/50 p-3">
-                    <p className="text-xs text-amber-600">Stale Transaction</p>
-                    <p className="font-semibold text-amber-900">
-                      {detailModal.risk?.stale ? "Yes" : "No"}
-                    </p>
+                  <div className="verification-item">
+                    <svg className="icon-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Signature Verified</span>
                   </div>
                 </div>
               </div>
 
-              {/* Transaction Information */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">From</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{detailModal.from_name}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-600">{detailModal.owner}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">To Account</p>
-                  <p className="mt-1 font-mono text-sm font-semibold text-slate-900">{detailModal.to_account}</p>
-                </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Amount</p>
-                  <p className="mt-1 text-2xl font-bold text-emerald-900">
-                    ₹ {Number(detailModal.amount).toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Branch</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{detailModal.branch?.label || "N/A"}</p>
-                </div>
+              <div className="modal-warning">
+                <svg className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p>
+                  <strong>Manager Restrictions:</strong> You cannot edit transaction amounts or accounts.
+                  All approval/rejection actions are logged in the Global Audit Log.
+                </p>
               </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                onClick={() => {
+                  setSelectedTransaction(null);
+                  setShowApproveModal(selectedTransaction.id);
+                }}
+                className="btn-approve"
+              >
+                Approve Transaction
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedTransaction(null);
+                  setShowRejectModal(selectedTransaction.id);
+                }}
+                className="btn-reject"
+              >
+                Reject Transaction
+              </button>
+              <button
+                onClick={() => setSelectedTransaction(null)}
+                className="btn-cancel"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Timestamps */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Timeline</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Initiated</span>
-                    <span className="font-semibold text-slate-900">
-                      {detailModal.initiated_at ? new Date(detailModal.initiated_at).toLocaleString() : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Submitted</span>
-                    <span className="font-semibold text-slate-900">
-                      {detailModal.submitted_at ? new Date(detailModal.submitted_at).toLocaleString() : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Status</span>
-                    <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                      {detailModal.status || "Pending"}
-                    </span>
-                  </div>
-                </div>
+      {/* Approve Confirmation Modal */}
+      {showApproveModal && (
+        <div className="modal-overlay" onClick={() => setShowApproveModal(null)}>
+          <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirm Approval</h2>
+              <button
+                onClick={() => setShowApproveModal(null)}
+                className="modal-close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="confirmation-icon confirmation-icon-approve">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
+              <p className="confirmation-text">
+                Are you sure you want to approve this transaction?
+              </p>
+              <p className="confirmation-subtext">
+                Transaction ID: <strong>{showApproveModal.substring(0, 12)}...</strong>
+              </p>
+              <div className="confirmation-warning">
+                This action will be logged in the audit trail and cannot be undone.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                onClick={() => handleApprove(showApproveModal)}
+                disabled={actionLoading}
+                className="btn-approve"
+              >
+                {actionLoading ? "Processing..." : "Yes, Approve"}
+              </button>
+              <button
+                onClick={() => setShowApproveModal(null)}
+                disabled={actionLoading}
+                className="btn-cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 border-t border-slate-200 pt-4">
-                <button
-                  onClick={() => {
-                    handleDecision(detailModal.id, "approve");
-                    setDetailModal(null);
-                  }}
-                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  ✓ Approve Transaction
-                </button>
-                <button
-                  onClick={() => {
-                    handleDecision(detailModal.id, "reject");
-                    setDetailModal(null);
-                  }}
-                  className="flex-1 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
-                >
-                  ✗ Reject Transaction
-                </button>
-                <button
-                  onClick={() => setDetailModal(null)}
-                  className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Close
-                </button>
+      {/* Reject Confirmation Modal */}
+      {showRejectModal && (
+        <div className="modal-overlay" onClick={() => setShowRejectModal(null)}>
+          <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirm Rejection</h2>
+              <button
+                onClick={() => setShowRejectModal(null)}
+                className="modal-close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="confirmation-icon confirmation-icon-reject">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
+              <p className="confirmation-text">
+                Are you sure you want to reject this transaction?
+              </p>
+              <p className="confirmation-subtext">
+                Transaction ID: <strong>{showRejectModal.substring(0, 12)}...</strong>
+              </p>
+              <div className="form-group">
+                <label className="form-label">
+                  Rejection Reason <span className="required">*</span>
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter the reason for rejection (mandatory)"
+                  className="form-textarea"
+                  rows="4"
+                  required
+                />
+              </div>
+              <div className="confirmation-warning">
+                This action will be logged in the audit trail and cannot be undone.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                onClick={() => handleReject(showRejectModal)}
+                disabled={actionLoading || !rejectionReason.trim()}
+                className="btn-reject"
+              >
+                {actionLoading ? "Processing..." : "Yes, Reject"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRejectModal(null);
+                  setRejectionReason("");
+                }}
+                disabled={actionLoading}
+                className="btn-cancel"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

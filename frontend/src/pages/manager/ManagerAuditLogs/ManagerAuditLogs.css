@@ -1,0 +1,52 @@
+.manager-audit-logs-container {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.filter-card {
+  transition: all 0.2s ease;
+}
+
+.audit-log-row {
+  transition: background-color 0.15s ease;
+}
+
+.audit-log-row:hover {
+  background-color: #f8fafc;
+}
+
+.action-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.action-approve {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.action-reject {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.action-verify {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.action-revoke {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.stat-card {
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}

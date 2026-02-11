@@ -147,7 +147,11 @@ def all_transactions():
 
 
 @transaction_bp.route("/<tx_id>", methods=["GET"])
-@require_certificate("customer", allowed_actions=["VIEW_OWN"])
+@require_certificate(
+    {"customer", "auditor_clerk", "manager", "system_admin"},
+    allowed_actions=["VIEW_OWN", "VIEW_AUDIT"],
+    action_match="any"
+)
 def transaction_detail(tx_id):
     user = request.user
     try:
@@ -159,3 +163,21 @@ def transaction_detail(tx_id):
 
     AuditLogger.log_action(user=user, action="Viewed transaction", transaction_id=tx_id)
     return jsonify(tx)
+
+
+# =========================================
+# MANAGER: Get pending transactions (alias)
+# =========================================
+
+
+@transaction_bp.route("/approvals", methods=["GET"])
+@require_certificate(
+    {"manager"},
+    allowed_actions=["APPROVE_TRANSACTION", "APPROVE_HIGH_VALUE"],
+    action_match="any"
+)
+def pending_approvals():
+    """Alias endpoint for managers to get pending transactions"""
+    txs = TransactionService.get_pending_transactions()
+    AuditLogger.log_action(user=request.user, action="Viewed pending approvals")
+    return jsonify(txs)

@@ -1,3 +1,86 @@
-@import "../systemAdmin.css";
+/* Light Mode Overrides for System Admin User Inventory */
 
-/* Component-specific styles for SystemAdminUserInventory */
+/* Form inputs - Light Mode */
+.light-mode input[type="text"],
+.light-mode input[type="email"],
+.light-mode select {
+  background-color: white;
+  border-color: rgb(203, 213, 225);
+  color: rgb(30, 41, 59);
+}
+
+.light-mode input[type="text"]:focus,
+.light-mode input[type="email"]:focus,
+.light-mode select:focus {
+  border-color: rgb(99, 102, 241);
+  ring-color: rgb(199, 210, 254);
+}
+
+.light-mode input::placeholder {
+  color: rgb(100, 116, 139);
+}
+
+/* Labels - Light Mode */
+.light-mode label {
+  color: rgb(51, 65, 85);
+}
+
+/* Table - Light Mode */
+.light-mode table {
+  background-color: white;
+  border-color: rgb(226, 232, 240);
+}
+
+.light-mode thead {
+  background-color: rgb(248, 250, 252);
+  color: rgb(100, 116, 139);
+}
+
+.light-mode tbody tr {
+  border-color: rgb(226, 232, 240);
+}
+
+.light-mode tbody tr:hover {
+  background-color: rgb(248, 250, 252);
+}
+
+.light-mode td {
+  color: rgb(30, 41, 59);
+}
+
+/* Buttons - Light Mode */
+.light-mode button {
+  transition: all 0.3s ease;
+}
+
+
+/* Spinner for loading state */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Material Icons */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+}

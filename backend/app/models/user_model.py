@@ -8,7 +8,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     full_name = db.Column(db.String(150), nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=True)  # Made optional
+    mobile = db.Column(db.String(15), nullable=False)  # New field
+    address = db.Column(db.Text, nullable=True)  # New field (optional)
+    aadhar = db.Column(db.String(12), nullable=True)  # New field (optional)
+    pan = db.Column(db.String(10), nullable=True)  # New field (optional)
 
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False)
 

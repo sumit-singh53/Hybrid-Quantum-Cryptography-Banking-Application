@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import bankVisual from "../../assets/images/bank.png";
 
@@ -10,6 +10,7 @@ const Login = () => {
   const [certificateFile, setCertificateFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [privateKeyFile, setPrivateKeyFile] = useState(null);
   const [manualDeviceSecret, setManualDeviceSecret] = useState("");
   const [showRecoveryFields, setShowRecoveryFields] = useState(false);
@@ -53,13 +54,16 @@ const Login = () => {
       switch (user.role) {
         case "customer":
         case "auditor_clerk":
-          navigate("/dashboard");
+          setSuccess("Login successful — redirecting…");
+          setTimeout(() => navigate("/dashboard"), 700);
           break;
         case "manager":
-          navigate("/dashboard/manager");
+          setSuccess("Login successful — redirecting…");
+          setTimeout(() => navigate("/manager/dashboard"), 700);
           break;
         case "system_admin":
-          navigate("/system-admin/dashboard");
+          setSuccess("Login successful — redirecting…");
+          setTimeout(() => navigate("/admin/dashboard"), 700);
           break;
         default:
           setError("Unknown user role. Please contact support.");
@@ -120,6 +124,11 @@ const Login = () => {
               {error && (
                 <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-red-800 border border-red-200 rounded-lg sm:p-4 bg-red-50 animate-fade-in">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-blue-900 border border-blue-200 rounded-lg sm:p-4 bg-blue-50 animate-fade-in">
+                  {success}
                 </div>
               )}
               <form className="space-y-4 sm:space-y-6" onSubmit={handleLogin}>
@@ -201,6 +210,30 @@ const Login = () => {
                   {loading ? "Logging in..." : "Login"}
                 </button>
               </form>
+
+              {/* Navigation Links */}
+              <div className="mt-6 text-center space-y-3">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{" "}
+                  <Link
+                    to="/register"
+                    className="font-semibold text-blue-600 hover:text-blue-800 transition-colors no-underline"
+                  >
+                    Sign up here
+                  </Link>
+                </p>
+                <p className="text-sm text-gray-600">
+                  <Link
+                    to="/"
+                    className="font-medium text-blue-600 hover:text-blue-800 transition-colors no-underline inline-flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Back to Home
+                  </Link>
+                </p>
+              </div>
             </div>
           </div>
         </section>

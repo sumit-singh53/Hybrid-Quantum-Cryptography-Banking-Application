@@ -1,10 +1,13 @@
 import secrets
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
 from app.security.access_control import require_certificate
 from app.security.kyber_crystal import KyberCrystal
 from app.services.system_admin_service import SystemAdminService
+from app.services.crypto_management_service import CryptoManagementService
+from app.services.system_monitoring_service import SystemMonitoringService
 from app.utils.logger import AuditLogger
 
 
@@ -15,7 +18,7 @@ def system_admin_guard(*, allowed_actions=None, action_match="all"):
     )
 
 
-system_admin_bp = Blueprint("system_admin", __name__, url_prefix="/api/system-admin")
+system_admin_bp = Blueprint("system_admin", __name__, url_prefix="/api/admin")
 
 
 @system_admin_bp.route("/dashboard", methods=["GET"])
@@ -158,12 +161,44 @@ def kill_sessions():
 @system_admin_bp.route("/audit/global", methods=["GET"])
 @system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
 def global_audit_feed():
-    limit = int(request.args.get("limit", 100))
+    """Get global audit feed with filtering and pagination."""
+    # Pagination
+    limit = int(request.args.get("limit", 20))
     page = int(request.args.get("page", 1))
     offset = (page - 1) * limit if page > 1 else 0
-    feed = SystemAdminService.global_audit_feed(limit=limit, offset=offset)
-    total = len(feed)  # For now, return total from current result
-    return jsonify({"audits": feed, "total": total, "page": page, "limit": limit})
+    
+    # Filters
+    search = request.args.get("search", "").strip()
+    role = request.args.get("role", "").strip()
+    action_type = request.args.get("actionType", "").strip()
+    date_from = request.args.get("dateFrom", "").strip()
+    date_to = request.args.get("dateTo", "").strip()
+    
+    feed = SystemAdminService.global_audit_feed(
+        limit=limit,
+        offset=offset,
+        search=search,
+        role=role,
+        action_type=action_type,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    
+    # Get total count for pagination
+    total = SystemAdminService.get_audit_count(
+        search=search,
+        role=role,
+        action_type=action_type,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    
+    return jsonify({
+        "audits": feed,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    })
 
 
 @system_admin_bp.route("/security/events", methods=["GET"])
@@ -244,7 +279,9 @@ def delete_role(role_id: int):
 
 
 @system_admin_bp.route("/users", methods=["GET"])
-@system_admin_guard(allowed_actions=["MANAGE_ROLES"])
+@system_admin_guard(
+    allowed_actions=["MANAGE_ROLES", "GLOBAL_AUDIT"], action_match="any"
+)
 def list_managed_users():
     roles_param = request.args.get("roles") or request.args.get("role")
     roles = (
@@ -257,14 +294,21 @@ def list_managed_users():
 
 
 @system_admin_bp.route("/users", methods=["POST"])
-@system_admin_guard(allowed_actions=["MANAGE_ROLES"])
+@system_admin_guard(
+    allowed_actions=["MANAGE_ROLES", "GLOBAL_AUDIT"], action_match="any"
+)
 def create_managed_user():
     body = request.get_json(silent=True) or {}
     try:
         user = SystemAdminService.create_user(
             username=body.get("username", ""),
             full_name=body.get("full_name", ""),
-            email=body.get("email", ""),
+            email=body.get("email"),
+            mobile=body.get("mobile", ""),
+            address=body.get("address"),
+            aadhar=body.get("aadhar"),
+            pan=body.get("pan"),
+            password=body.get("password"),
             role=body.get("role", ""),
             is_active=body.get("is_active", True),
         )
@@ -280,7 +324,9 @@ def create_managed_user():
 
 
 @system_admin_bp.route("/users/<int:user_id>", methods=["PUT"])
-@system_admin_guard(allowed_actions=["MANAGE_ROLES"])
+@system_admin_guard(
+    allowed_actions=["MANAGE_ROLES", "GLOBAL_AUDIT"], action_match="any"
+)
 def update_managed_user(user_id: int):
     body = request.get_json(silent=True) or {}
     try:
@@ -289,6 +335,11 @@ def update_managed_user(user_id: int):
             username=body.get("username"),
             full_name=body.get("full_name"),
             email=body.get("email"),
+            mobile=body.get("mobile"),
+            address=body.get("address"),
+            aadhar=body.get("aadhar"),
+            pan=body.get("pan"),
+            password=body.get("password"),
             role=body.get("role"),
             is_active=body.get("is_active"),
         )
@@ -304,7 +355,9 @@ def update_managed_user(user_id: int):
 
 
 @system_admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
-@system_admin_guard(allowed_actions=["MANAGE_ROLES"])
+@system_admin_guard(
+    allowed_actions=["MANAGE_ROLES", "GLOBAL_AUDIT"], action_match="any"
+)
 def delete_managed_user(user_id: int):
     try:
         user = SystemAdminService.delete_user(user_id)
@@ -317,3 +370,244 @@ def delete_managed_user(user_id: int):
         action=f"Deleted managed user '{user['username']}'",
     )
     return jsonify({"user": user})
+
+
+# =========================================
+# Cryptography Management
+# =========================================
+
+@system_admin_bp.route("/crypto/status", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def crypto_status():
+    """Get cryptography configuration status (read-only, no private keys exposed)."""
+    status = CryptoManagementService.get_crypto_status()
+    return jsonify(status)
+
+
+@system_admin_bp.route("/crypto/health", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def crypto_health():
+    """Get encryption health indicators."""
+    health = CryptoManagementService.get_encryption_health()
+    return jsonify(health)
+
+
+@system_admin_bp.route("/crypto/algorithms", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def crypto_algorithms():
+    """Get list of cryptographic algorithms in use."""
+    algorithms = CryptoManagementService.get_crypto_algorithms()
+    return jsonify({"algorithms": algorithms})
+
+
+@system_admin_bp.route("/crypto/rotate-keys", methods=["POST"])
+@system_admin_guard(allowed_actions=["MANAGE_CRL"])
+def crypto_rotate_keys():
+    """
+    Trigger CA key rotation (both classical and post-quantum).
+    This is a sensitive operation that should be logged and confirmed.
+    """
+    rotation_result = SystemAdminService.rotate_authority_keys()
+    AuditLogger.log_action(
+        user=request.user,
+        action="Triggered cryptographic key rotation (CA keys)",
+    )
+    return jsonify(rotation_result)
+
+
+
+# =========================================
+# SYSTEM MONITORING
+# =========================================
+
+@system_admin_bp.route("/monitoring/health", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def system_health():
+    """Get overall system health status."""
+    health = SystemMonitoringService.get_system_health()
+    return jsonify(health), 200
+
+
+@system_admin_bp.route("/monitoring/security", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def security_metrics():
+    """Get security monitoring metrics."""
+    metrics = SystemMonitoringService.get_security_metrics()
+    return jsonify(metrics), 200
+
+
+@system_admin_bp.route("/monitoring/performance", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def performance_metrics():
+    """Get performance metrics."""
+    metrics = SystemMonitoringService.get_performance_metrics()
+    return jsonify(metrics), 200
+
+
+@system_admin_bp.route("/monitoring/alerts", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def system_alerts():
+    """Get system alerts and warnings."""
+    alerts = SystemMonitoringService.get_alerts()
+    return jsonify(alerts), 200
+
+
+@system_admin_bp.route("/monitoring/overview", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def monitoring_overview():
+    """Get comprehensive monitoring overview."""
+    overview = {
+        "health": SystemMonitoringService.get_system_health(),
+        "security": SystemMonitoringService.get_security_metrics(),
+        "performance": SystemMonitoringService.get_performance_metrics(),
+        "alerts": SystemMonitoringService.get_alerts(),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+    return jsonify(overview), 200
+
+
+# =========================================
+# INCIDENT RESPONSE
+# =========================================
+
+from app.services.incident_response_service import IncidentResponseService
+
+@system_admin_bp.route("/incidents", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def get_incidents():
+    """Get all incidents with optional filtering."""
+    status = request.args.get("status")
+    severity = request.args.get("severity")
+    limit = int(request.args.get("limit", 50))
+    
+    incidents = IncidentResponseService.get_all_incidents(
+        status=status,
+        severity=severity,
+        limit=limit
+    )
+    
+    return jsonify({"incidents": incidents, "total": len(incidents)}), 200
+
+
+@system_admin_bp.route("/incidents/statistics", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def incident_statistics():
+    """Get incident statistics."""
+    stats = IncidentResponseService.get_incident_statistics()
+    return jsonify(stats), 200
+
+
+@system_admin_bp.route("/incidents/<incident_id>", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def get_incident(incident_id):
+    """Get a specific incident by ID."""
+    incident = IncidentResponseService.get_incident_by_id(incident_id)
+    
+    if not incident:
+        return jsonify({"message": "Incident not found"}), 404
+    
+    return jsonify(incident), 200
+
+
+@system_admin_bp.route("/incidents", methods=["POST"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def create_incident():
+    """Create a new incident."""
+    data = request.get_json()
+    
+    if not data or not data.get("type") or not data.get("severity"):
+        return jsonify({"message": "type and severity are required"}), 400
+    
+    admin_username = getattr(request, "user", {}).get("id", "unknown_admin")
+    
+    incident = IncidentResponseService.create_incident(
+        incident_type=data["type"],
+        severity=data["severity"],
+        description=data.get("description", ""),
+        affected_user=data.get("affected_user"),
+        affected_service=data.get("affected_service"),
+        metadata=data.get("metadata"),
+        created_by=admin_username
+    )
+    
+    return jsonify(incident), 201
+
+
+@system_admin_bp.route("/incidents/<incident_id>/status", methods=["PUT"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def update_incident_status(incident_id):
+    """Update incident status."""
+    data = request.get_json()
+    
+    if not data or not data.get("status"):
+        return jsonify({"message": "status is required"}), 400
+    
+    admin_username = getattr(request, "user", {}).get("id", "unknown_admin")
+    
+    try:
+        incident = IncidentResponseService.update_incident_status(
+            incident_id=incident_id,
+            status=data["status"],
+            admin_username=admin_username,
+            notes=data.get("notes")
+        )
+        
+        return jsonify(incident), 200
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 404
+
+
+@system_admin_bp.route("/incidents/<incident_id>/lock-account", methods=["POST"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def lock_account_incident(incident_id):
+    """Lock a user account as incident response."""
+    data = request.get_json()
+    
+    if not data or not data.get("user_id"):
+        return jsonify({"message": "user_id is required"}), 400
+    
+    admin_username = getattr(request, "user", {}).get("id", "unknown_admin")
+    
+    try:
+        result = IncidentResponseService.lock_user_account(
+            incident_id=incident_id,
+            user_id=data["user_id"],
+            admin_username=admin_username,
+            reason=data.get("reason", "Incident response action")
+        )
+        
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 404
+
+
+@system_admin_bp.route("/incidents/<incident_id>/unlock-account", methods=["POST"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def unlock_account_incident(incident_id):
+    """Unlock a user account."""
+    data = request.get_json()
+    
+    if not data or not data.get("user_id"):
+        return jsonify({"message": "user_id is required"}), 400
+    
+    admin_username = getattr(request, "user", {}).get("id", "unknown_admin")
+    
+    try:
+        result = IncidentResponseService.unlock_user_account(
+            incident_id=incident_id,
+            user_id=data["user_id"],
+            admin_username=admin_username,
+            reason=data.get("reason", "Incident resolved")
+        )
+        
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 404
+
+
+@system_admin_bp.route("/incidents/detect", methods=["POST"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def detect_incidents():
+    """Auto-detect potential incidents from security events."""
+    detected = IncidentResponseService.detect_incidents_from_security_events()
+    return jsonify({"detected_incidents": detected, "count": len(detected)}), 200

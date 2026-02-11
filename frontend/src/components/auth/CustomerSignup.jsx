@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-// import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { sha3_256 } from "js-sha3";
 import api from "../../services/api";
 import {
@@ -124,10 +124,12 @@ const downloadCertificateFile = ({ certificateText, certificateId }) => {
 };
 
 const CustomerSignup = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [credentialSummary, setCredentialSummary] = useState(null);
+  const [success, setSuccess] = useState("");
   const [signupStage, setSignupStage] = useState("idle");
 
   const handleChange = (event) => {
@@ -228,6 +230,7 @@ const CustomerSignup = () => {
         certificateId: certificate_id,
         fullName: normalizedName,
       });
+      setSuccess("Registration successful — certificate downloaded.");
       setForm(INITIAL_FORM);
     } catch (err) {
       setSignupStage("blocked");
@@ -241,13 +244,13 @@ const CustomerSignup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-cyan-50 text-slate-900">
-      <main className="flex flex-col gap-16 px-2 py-8 mx-auto max-w-7xl md:px-8 md:py-12 lg:py-16">
-        <section className="flex items-center justify-center flex-1">
+    <div className="h-screen bg-gradient-to-br from-white via-slate-50 to-cyan-50 text-slate-900 overflow-hidden">
+      <main className="flex items-center justify-center h-full px-2 py-4 mx-auto max-w-7xl md:px-8">
+        <section className="flex items-center justify-center w-full">
           <div className="flex flex-col w-full max-w-4xl overflow-hidden bg-white shadow-lg rounded-xl md:flex-row md:items-stretch">
-            <div className="flex items-center justify-center w-full p-6 sm:p-8 md:w-1/2 bg-gradient-to-br from-green-600 to-green-400">
+            <div className="flex items-center justify-center w-full p-4 md:w-1/2 bg-gradient-to-br from-green-600 to-green-400">
               <svg
-                className="w-40 h-40 sm:w-64 sm:h-64"
+                className="w-32 h-32 sm:w-40 sm:h-40"
                 fill="none"
                 viewBox="0 0 200 200"
                 xmlns="http://www.w3.org/2"
@@ -278,30 +281,27 @@ const CustomerSignup = () => {
                 />
               </svg>
             </div>
-            <div className="flex flex-col justify-center w-full p-4 sm:p-8 md:w-1/2">
-              <h2 className="mb-4 text-2xl font-bold text-center text-gray-800 sm:mb-6 sm:text-3xl">
+            <div className="flex flex-col justify-center w-full p-4 sm:p-6 md:w-1/2 overflow-y-auto max-h-screen">
+              <h2 className="mb-3 text-2xl font-bold text-center text-gray-800 sm:mb-4 sm:text-3xl">
                 Customer Registration
               </h2>
               <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-green-900 border border-green-200 rounded-lg shadow bg-green-50 sm:p-4 animate-fade-in">
                 <span className="font-semibold">Signup Instructions:</span>
                 <ul className="pl-5 mt-2 space-y-1 list-disc">
                   <li>Enter your full legal name and a valid email address.</li>
-                  <li>
-                    Choose a strong password (at least 8 characters, with
-                    letters and numbers).
-                  </li>
-                  <li>
-                    After signup, download and securely store your personal
-                    certificate file.
-                  </li>
-                  <li>
-                    Contact support for any onboarding issues or questions.
-                  </li>
+                  <li>Choose a strong password (at least 8 characters).</li>
+                  <li>After signup, download and store your certificate file.</li>
+                  <li>Contact support for any onboarding issues.</li>
                 </ul>
               </div>
               {error && (
                 <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-red-800 border border-red-200 rounded-lg sm:p-4 bg-red-50 animate-fade-in">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-green-900 border border-green-200 rounded-lg sm:p-4 bg-green-50 animate-fade-in">
+                  {success}
                 </div>
               )}
               <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
@@ -368,7 +368,7 @@ const CustomerSignup = () => {
                 </button>
               </form>
               {credentialSummary && (
-                <div className="flex flex-col items-center mt-6">
+                <div className="flex flex-col items-center mt-4">
                   <button
                     type="button"
                     className="px-4 py-2 font-semibold text-green-800 transition bg-green-100 rounded-lg shadow hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
@@ -378,6 +378,30 @@ const CustomerSignup = () => {
                   </button>
                 </div>
               )}
+
+              {/* Navigation Links */}
+              <div className="mt-6 text-center space-y-3">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{" "}
+                  <Link
+                    to="/login"
+                    className="font-semibold text-green-600 hover:text-green-800 transition-colors no-underline"
+                  >
+                    Login here
+                  </Link>
+                </p>
+                <p className="text-sm text-gray-600">
+                  <Link
+                    to="/"
+                    className="font-medium text-green-600 hover:text-green-800 transition-colors no-underline inline-flex items-center gap-1 justify-center"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Back to Home
+                  </Link>
+                </p>
+              </div>
             </div>
           </div>
         </section>

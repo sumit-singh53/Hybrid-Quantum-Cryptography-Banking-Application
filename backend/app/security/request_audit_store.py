@@ -37,10 +37,16 @@ class RequestAuditStore:
             logger = logging.getLogger(__name__)
             logger.error(f"Corrupted audit log detected: {e}. Creating backup and starting fresh.")
             
-            # Backup corrupted file
-            backup_path = cls.STORE_PATH.with_suffix('.json.corrupted')
+            # Backup corrupted file with timestamp to avoid conflicts
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            backup_path = cls.STORE_PATH.with_suffix(f'.json.corrupted.{timestamp}')
+            
             if cls.STORE_PATH.exists():
-                cls.STORE_PATH.rename(backup_path)
+                try:
+                    cls.STORE_PATH.rename(backup_path)
+                except (FileExistsError, OSError) as rename_err:
+                    logger.warning(f"Could not rename corrupted file: {rename_err}. Deleting instead.")
+                    cls.STORE_PATH.unlink(missing_ok=True)
             
             # Create fresh empty log
             cls.STORE_PATH.write_text("[]", encoding="utf-8")

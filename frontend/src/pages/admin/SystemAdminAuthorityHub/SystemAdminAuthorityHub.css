@@ -1,3 +1,25 @@
 @import "../systemAdmin.css";
 
 /* Component-specific styles for SystemAdminAuthorityHub */
+
+/* Spinner for loading state */
+.spinner {
+  border: 3px solid rgba(99, 102, 241, 0.1);
+  border-top-color: rgb(99, 102, 241);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode spinner */
+.dark .spinner {
+  border-color: rgba(129, 140, 248, 0.2);
+  border-top-color: rgb(129, 140, 248);
+}

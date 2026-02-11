@@ -25,18 +25,21 @@ from typing import Optional, Tuple
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+load_dotenv(BASE_DIR / ".env")
 os.environ.setdefault("FLASK_ENV", "development")
 
 DEFAULT_USER_ID = os.getenv("MANAGER_USER_ID", "manager-local")
 DEFAULT_FULL_NAME = os.getenv("MANAGER_FULL_NAME", "Local Manager")
-DEFAULT_DEVICE_SECRET = os.getenv("MANAGER_DEVICE_SECRET", "mgr-secret")
+DEFAULT_DEVICE_SECRET = os.getenv("MANAGER_DEVICE_SECRET", "123456")
 
 from app.services.certificate_service import CertificateService  # noqa: E402
+from app.security.kyber_crystal import KyberCrystal  # noqa: E402
 
 ROLE = "manager"
 
@@ -98,11 +101,17 @@ def main() -> None:
 
     private_pem, rsa_public_b64 = _generate_rsa_spki()
     pq_key = _resolve_pq_key(args.pq_public_key)
+    
+    # Generate ML-KEM keypair
+    kyber_pair = KyberCrystal.generate_keypair()
+    ml_kem_public_b64 = kyber_pair["public_key"]
+    ml_kem_private_b64 = kyber_pair["private_key"]
 
     cert_bundle = CertificateService.issue_customer_certificate(
         user_id=args.user_id,
         full_name=args.full_name,
         role=ROLE,
+        ml_kem_public_key_b64=ml_kem_public_b64,
         device_secret=args.device_secret,
         rsa_public_key_spki=rsa_public_b64,
         pq_public_key_b64=pq_key,
@@ -112,18 +121,25 @@ def main() -> None:
     output_dir = Path(args.out_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    private_path = output_dir / f"{args.user_id}_{ROLE}.key"
-    cert_path = output_dir / f"{args.user_id}_{ROLE}.pem"
+    private_path = output_dir / f"{args.user_id}_{ROLE}_private.pem"
+    cert_path = output_dir / f"{args.user_id}_{ROLE}_certificate.pem"
+    mlkem_private_path = output_dir / f"{args.user_id}_mlkem_private.pem"
+    device_secret_path = output_dir / f"{args.user_id}_device_secret.txt"
     info_path = output_dir / "metadata.txt"
 
     private_path.write_bytes(private_pem)
     cert_path.write_text(cert_bundle["certificate_pem"], encoding="utf-8")
+    mlkem_private_path.write_text(ml_kem_private_b64, encoding="utf-8")
+    device_secret_path.write_text(args.device_secret.strip(), encoding="utf-8")
     info_path.write_text(
         (
             f"user_id: {args.user_id}\n"
             f"full_name: {args.full_name}\n"
             f"role: {ROLE}\n"
             f"device_secret: {args.device_secret}\n"
+            f"ml_kem_public_key: {ml_kem_public_b64}\n"
+            f"ml_kem_private_key_path: {mlkem_private_path}\n"
+            f"device_secret_path: {device_secret_path}\n"
             f"certificate_path: {cert_path}\n"
             f"valid_to: {cert_bundle['valid_to']}\n"
         ),
@@ -133,6 +149,8 @@ def main() -> None:
     print("Manager credential generated:")
     print(f"  Private key: {private_path}")
     print(f"  Certificate: {cert_path}")
+    print(f"  ML-KEM private key: {mlkem_private_path}")
+    print(f"  Device secret: {device_secret_path}")
     print(f"  Metadata:   {info_path}")
     print(
         "Use this certificate + device secret during login to access /manager/dashboard."

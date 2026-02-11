@@ -1,1 +1,82 @@
-/* Styles for BranchAudit */
+.branch-audit-container {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.branch-card {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.branch-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.branch-card.selected {
+  border-color: #4f46e5;
+  background-color: #eef2ff;
+}
+
+.compliance-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.compliance-compliant {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.compliance-monitor {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.compliance-review {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.metric-card {
+  transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: scale(1.02);
+}
+
+.transaction-row {
+  transition: background-color 0.15s ease;
+}
+
+.transaction-row:hover {
+  background-color: #f8fafc;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-approved {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}

@@ -289,40 +289,22 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
 
   return (
     <div id={sectionId} className="space-y-6">
-      {/* Information Banner */}
-      <div className="rounded-3xl border border-indigo-500/30 bg-indigo-500/10 p-5 shadow-lg">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
-            <svg className="h-5 w-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold text-indigo-200">Certificate Authentication</h4>
-            <p className="mt-1 text-xs leading-relaxed text-slate-300">
-              Users authenticate using their downloaded certificate bundle (ZIP file containing .pem certificate, RSA private key, ML-KEM private key, and device secret). 
-              The "Escrow bundles" table below shows all issued certificates. Note that ZIP bundles are only downloadable immediately after issuance - previously issued certificates are listed for reference only.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
+      <div className="rounded-3xl border p-6 shadow-xl transition-all duration-300 border-slate-300 bg-white dark:border-slate-900 dark:bg-slate-950/60">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+            <p className="inline-flex items-center rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] border-slate-300 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
               Privileged issuance
             </p>
-            <h3 className="mt-3 text-2xl font-semibold text-white">
+            <h3 className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
               Auto-generate credential bundles for managed users
             </h3>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">
+            <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
               Select any combination of customers, managers, or auditor clerks. We will mint
               certificates, generate device secrets, and package the artifacts as a download-ready bundle.
             </p>
           </div>
-          <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
-            <label className="flex flex-col text-xs uppercase tracking-wide text-slate-400">
+          <div className="flex flex-col gap-2 rounded-2xl border p-4 text-sm border-slate-300 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+            <label className="flex flex-col text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">
               Validity (days)
               <input
                 type="number"
@@ -330,14 +312,14 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
                 max="365"
                 value={validityDays}
                 onChange={(event) => setValidityDays(event.target.value)}
-                className="mt-1 rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-indigo-300 focus:outline-none"
+                className="mt-1 rounded-xl border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 border-slate-300 bg-white text-slate-900 focus:border-indigo-400 focus:ring-indigo-200 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-indigo-300 dark:focus:ring-indigo-500/40"
               />
             </label>
             <button
               type="button"
               onClick={issueForUsers}
               disabled={issuing || selectedUserIds.length === 0}
-              className="rounded-xl border border-indigo-400 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border px-4 py-2 text-sm font-semibold shadow-lg transition disabled:cursor-not-allowed disabled:opacity-60 border-indigo-400 bg-indigo-600 text-white hover:bg-indigo-500 dark:border-indigo-400 dark:bg-indigo-600 dark:hover:bg-indigo-500"
             >
               {issuing ? issuingStatus || "Issuing…" : `Issue for ${selectedUserIds.length || 0} user${selectedUserIds.length === 1 ? "" : "s"}`}
             </button>
@@ -345,7 +327,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
               type="button"
               onClick={loadUsers}
               disabled={usersLoading}
-              className="rounded-xl border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-600 disabled:opacity-60"
+              className="rounded-xl border px-4 py-2 text-sm font-semibold shadow-lg transition disabled:opacity-60 border-slate-400 bg-slate-200 text-slate-700 hover:bg-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
             >
               {usersLoading ? "Syncing…" : "Refresh users"}
             </button>
@@ -354,7 +336,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
         {(banner || usersError) && (
           <div className="mt-4 space-y-2">
             {usersError && (
-              <p className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              <p className="rounded-2xl border px-4 py-3 text-sm border-rose-400/40 bg-rose-500/10 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
                 ⚠️ {usersError}
               </p>
             )}
@@ -362,8 +344,8 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
               <p
                 className={`rounded-2xl border px-4 py-3 text-sm ${
                   banner.type === "success"
-                    ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
-                    : "border-rose-500/30 bg-rose-500/10 text-rose-100"
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-100"
+                    : "border-rose-400/40 bg-rose-500/10 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
                 }`}
               >
                 {banner.text}
@@ -373,25 +355,25 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
         )}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <input
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-80"
+            className="w-full rounded-2xl border px-4 py-2 text-sm placeholder:text-slate-500 transition focus:outline-none focus:ring-2 sm:w-80 border-slate-300 bg-white text-slate-900 focus:border-indigo-400 focus:ring-indigo-200 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-indigo-300 dark:focus:ring-indigo-500/40"
             placeholder="Search by username, email, or role"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
             Selected {selectedUserIds.length} / {filteredUsers.length}
           </div>
         </div>
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-900/80 text-left text-sm text-slate-100">
-            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <table className="min-w-full divide-y text-left text-sm divide-slate-200 dark:divide-slate-900/80">
+            <thead className="text-xs font-semibold uppercase tracking-wide bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0}
                     onChange={handleSelectAll}
-                    className="h-4 w-4 rounded border-white/10 bg-slate-900/80"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80"
                   />
                 </th>
                 <th className="px-4 py-3">Username</th>
@@ -401,38 +383,40 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900/60">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-900/60">
               {usersLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-5 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-5 text-center text-slate-500 dark:text-slate-500">
                     Loading managed users…
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-5 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-5 text-center text-slate-500 dark:text-slate-500">
                     No managed users match this filter.
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-white/5">
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition">
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={selectedUserIds.includes(user.id)}
                         onChange={() => toggleSelection(user.id)}
-                        className="h-4 w-4 rounded border-white/10 bg-slate-900/80"
+                        className="h-4 w-4 rounded border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{user.username}</td>
-                    <td className="px-4 py-3">{user.full_name}</td>
-                    <td className="px-4 py-3 text-slate-300">{user.email}</td>
-                    <td className="px-4 py-3 uppercase tracking-wide text-slate-400">{user.role}</td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{user.username}</td>
+                    <td className="px-4 py-3 text-slate-900 dark:text-slate-100">{user.full_name}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{user.email}</td>
+                    <td className="px-4 py-3 uppercase tracking-wide text-slate-600 dark:text-slate-400">{user.role}</td>
+                    <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          user.is_active ? "bg-emerald-500/10 text-emerald-200" : "bg-rose-500/10 text-rose-200"
+                          user.is_active 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200" 
+                            : "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200"
                         }`}
                       >
                         {user.is_active ? "Active" : "Inactive"}
@@ -446,91 +430,31 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
         </div>
       </div>
 
-      {bundles.length > 0 && (
-        <div className="rounded-3xl border border-slate-900 bg-slate-950/60 p-6 shadow-xl">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-slate-100">Escrow bundles</h3>
-              <p className="text-sm text-slate-400">
-                {bundles.length} sealed bundle{bundles.length === 1 ? "" : "s"} ready for delivery.
+      {/* Instructions Section */}
+      <div className="rounded-3xl border p-6 shadow-lg transition-all duration-300 border-blue-400/40 bg-blue-500/10 dark:border-blue-500/30 dark:bg-blue-500/10">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 dark:bg-blue-500/20">
+            <span className="material-icons text-blue-600 dark:text-blue-300">info</span>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-200">Certificate Authentication Instructions</h4>
+            <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+              <p>
+                <strong>How it works:</strong> Users authenticate using their downloaded certificate bundle (ZIP file containing .pem certificate, RSA private key, ML-KEM private key, and device secret).
+              </p>
+              <p>
+                <strong>Important:</strong> ZIP bundles are only downloadable immediately after issuance. The system automatically downloads the bundle when you click "Issue for X users".
+              </p>
+              <p>
+                <strong>Distribution:</strong> Securely deliver the downloaded ZIP file to the respective user through your organization's secure channel.
+              </p>
+              <p>
+                <strong>User Login:</strong> Users will upload their certificate bundle on the login page to authenticate and access the system.
               </p>
             </div>
           </div>
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-900/80 text-left text-sm text-slate-100">
-              <thead className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Issued</th>
-                  <th className="px-4 py-3">Certificate</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-900/60">
-                {bundles.map((bundle) => (
-                  <tr key={bundle.id}>
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-white">{bundle.fullName}</div>
-                      <div className="text-xs text-slate-400">{bundle.userId}</div>
-                      {bundle.role && (
-                        <div className="mt-1">
-                          <span className="inline-block rounded-full bg-slate-700/50 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-300">
-                            {bundle.role}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">
-                      {new Date(bundle.issuedAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {bundle.certificatePath ? (
-                        <a
-                          href={bundle.certificatePath}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm font-semibold text-cyan-300 transition hover:text-cyan-200"
-                        >
-                          Vault PEM
-                        </a>
-                      ) : (
-                        <span className="text-slate-500">--</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {bundle.isRevoked ? (
-                        <span className="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-200">
-                          Revoked
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {bundle.fromServer ? (
-                        <span className="text-xs text-slate-500 italic">
-                          Previously issued (ZIP not available)
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleBundleDownload(bundle)}
-                          className="rounded-xl border border-cyan-500 bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-cyan-500"
-                        >
-                          Download again
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

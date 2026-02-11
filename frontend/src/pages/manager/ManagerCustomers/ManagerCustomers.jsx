@@ -1,60 +1,62 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  fetchManagedCustomers,
-  resetCustomerDeviceBinding,
+  fetchCustomerAccounts,
+  getCustomerAccountDetails,
+  updateAccountStatus,
+  forwardAccountForReview,
+  getAccountStatistics,
 } from "../../../services/managerService";
 import "./ManagerCustomers.css";
 
 const ManagerCustomers = () => {
-  const [roster, setRoster] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [bindingFilter, setBindingFilter] = useState("all");
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [accountTypeFilter, setAccountTypeFilter] = useState("all");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [statusChangeData, setStatusChangeData] = useState({ status: "", reason: "" });
+  const [forwardData, setForwardData] = useState({ reason: "", priority: "normal" });
 
-  const loadCustomers = async () => {
+  const loadAccounts = async () => {
     setLoading(true);
     try {
-      const data = await fetchManagedCustomers();
-      setRoster(data || []);
+      const [accountsData, statsData] = await Promise.all([
+        fetchCustomerAccounts(statusFilter !== "all" ? statusFilter : null, accountTypeFilter !== "all" ? accountTypeFilter : null),
+        getAccountStatistics(),
+      ]);
+      setAccounts(accountsData || []);
+      setStatistics(statsData || {});
       setMessage(null);
     } catch (err) {
-      setMessage(err?.response?.data?.message || "Unable to load roster");
+      setMessage(err?.response?.data?.message || "Unable to load customer accounts");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCustomers();
-  }, []);
+    loadAccounts();
+  }, [statusFilter, accountTypeFilter]);
 
   const filtered = useMemo(() => {
-    let result = roster;
+    let result = accounts;
     
     // Apply search
     if (query) {
       const q = query.toLowerCase();
       result = result.filter(
         (entry) =>
-          entry.owner?.toLowerCase().includes(q) ||
-          entry.certificate_id?.toLowerCase().includes(q) ||
-          entry.branch?.label?.toLowerCase().includes(q)
+          entry.name?.toLowerCase().includes(q) ||
+          entry.customer_id?.toLowerCase().includes(q) ||
+          entry.masked_account_number?.toLowerCase().includes(q) ||
+          entry.account_number?.toLowerCase().includes(q)
       );
-    }
-    
-    // Apply status filter
-    if (statusFilter !== "all") {
-      result = result.filter((entry) => entry.status === statusFilter);
-    }
-    
-    // Apply binding filter
-    if (bindingFilter !== "all") {
-      result = result.filter((entry) => entry.binding_state === bindingFilter);
     }
     
     // Apply sorting
@@ -63,11 +65,6 @@ const ManagerCustomers = () => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
         
-        if (sortConfig.key === "branch") {
-          aVal = a.branch?.label || "";
-          bVal = b.branch?.label || "";
-        }
-        
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -75,60 +72,69 @@ const ManagerCustomers = () => {
     }
     
     return result;
-  }, [query, roster, statusFilter, bindingFilter, sortConfig]);
+  }, [query, accounts, sortConfig]);
 
-  const handleReset = async (userId) => {
+  const handleViewDetails = async (customerId) => {
+    setLoading(true);
     try {
-      await resetCustomerDeviceBinding(userId);
-      setMessage(`Device binding reset for ${userId}`);
-      loadCustomers();
+      const details = await getCustomerAccountDetails(customerId);
+      setSelectedCustomer(details);
+      setMessage(null);
     } catch (err) {
-      setMessage(err?.response?.data?.message || "Unable to reset binding");
+      setMessage(err?.response?.data?.message || "Unable to load customer details");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleBulkReset = async () => {
-    if (selectedIds.size === 0) {
-      setMessage("Please select at least one customer");
+  const handleStatusChange = async () => {
+    if (!statusChangeData.status) {
+      setMessage("Please select a status");
       return;
     }
-    
+
     setLoading(true);
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const certId of selectedIds) {
-      try {
-        await resetCustomerDeviceBinding(certId);
-        successCount++;
-      } catch (err) {
-        failCount++;
-      }
-    }
-    
-    setSelectedIds(new Set());
-    setMessage(`${successCount} bindings reset successfully${failCount > 0 ? `, ${failCount} failed` : ""}`);
-    loadCustomers();
-  };
-
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedIds(new Set(filtered.map(c => c.certificate_id)));
-    } else {
-      setSelectedIds(new Set());
+    try {
+      await updateAccountStatus(
+        selectedCustomer.customer_id,
+        statusChangeData.status,
+        statusChangeData.reason
+      );
+      setMessage(`Account status updated to ${statusChangeData.status}`);
+      setShowStatusModal(false);
+      setStatusChangeData({ status: "", reason: "" });
+      setSelectedCustomer(null);
+      loadAccounts();
+    } catch (err) {
+      setMessage(err?.response?.data?.message || "Unable to update account status");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSelectOne = (certId, checked) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(certId);
-      } else {
-        newSet.delete(certId);
-      }
-      return newSet;
-    });
+  const handleForwardForReview = async () => {
+    if (!forwardData.reason) {
+      setMessage("Please provide a reason");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await forwardAccountForReview(
+        selectedCustomer.customer_id,
+        forwardData.reason,
+        forwardData.priority
+      );
+      setMessage("Account forwarded for review");
+      setShowForwardModal(false);
+      setForwardData({ reason: "", priority: "normal" });
+      setSelectedCustomer(null);
+      loadAccounts();
+    } catch (err) {
+      setMessage(err?.response?.data?.message || "Unable to forward account");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSort = (key) => {
@@ -139,14 +145,16 @@ const ManagerCustomers = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ["Owner", "Certificate ID", "Branch", "Status", "Binding State", "Last Seen"];
+    const headers = ["Customer ID", "Name", "Account Number", "Account Type", "Status", "Balance", "KYC Status", "Created At"];
     const rows = filtered.map(entry => [
-      entry.owner,
-      entry.certificate_id,
-      entry.branch?.label || "",
-      entry.status,
-      entry.binding_state,
-      entry.last_seen || ""
+      entry.customer_id,
+      entry.name,
+      entry.masked_account_number,
+      entry.account_type,
+      entry.account_status,
+      entry.balance,
+      entry.kyc_status,
+      entry.created_at || ""
     ]);
     
     const csvContent = [
@@ -158,27 +166,96 @@ const ManagerCustomers = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `customers-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `customer-accounts-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const getStatusColor = (status) => {
+    switch (status?.toUpperCase()) {
+      case "ACTIVE":
+        return "bg-emerald-100 text-emerald-700";
+      case "LIMITED":
+        return "bg-amber-100 text-amber-700";
+      case "FROZEN":
+        return "bg-rose-100 text-rose-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
+
+  const getKYCStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "verified":
+        return "bg-emerald-100 text-emerald-700";
+      case "pending":
+        return "bg-amber-100 text-amber-700";
+      case "rejected":
+        return "bg-rose-100 text-rose-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
+
   return (
     <div className="space-y-6 font-['Space_Grotesk','Segoe_UI',sans-serif]">
-      <div>
-        <h2 className="text-3xl font-semibold text-slate-900">
-          Customers under your branch
+      {/* Header */}
+      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-8 shadow-lg">
+        <h2 className="text-3xl font-bold text-slate-900">
+          Customer Accounts
         </h2>
-        <p className="mt-2 text-base text-slate-600">
-          Inspect device binding state and last activity per certificate before
-          approving additional limits.
+        <p className="mt-3 text-base leading-relaxed text-slate-600">
+          Supervisory view of customer accounts. Read-only access with limited
+          actions for account status management and escalation.
         </p>
       </div>
 
+      {/* Statistics Cards */}
+      {statistics && (
+        <section className="grid gap-6 md:grid-cols-4">
+          <article className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Accounts
+            </p>
+            <h3 className="mt-4 text-4xl font-bold text-slate-900">
+              {statistics.total_accounts || 0}
+            </h3>
+          </article>
+
+          <article className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 p-6 shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+              Active Accounts
+            </p>
+            <h3 className="mt-4 text-4xl font-bold text-emerald-600">
+              {statistics.active || 0}
+            </h3>
+          </article>
+
+          <article className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-6 shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+              Limited Accounts
+            </p>
+            <h3 className="mt-4 text-4xl font-bold text-amber-600">
+              {statistics.limited || 0}
+            </h3>
+          </article>
+
+          <article className="rounded-3xl border border-rose-200 bg-gradient-to-br from-rose-50 to-red-50 p-6 shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">
+              Frozen Accounts
+            </p>
+            <h3 className="mt-4 text-4xl font-bold text-rose-600">
+              {statistics.frozen || 0}
+            </h3>
+          </article>
+        </section>
+      )}
+
+      {/* Filters */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
-            placeholder="Search by name, certificate, or branch..."
+            placeholder="Search by name, customer ID, or account number..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
@@ -190,21 +267,22 @@ const ManagerCustomers = () => {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="revoked">Revoked</option>
+            <option value="limited">Limited</option>
+            <option value="frozen">Frozen</option>
           </select>
           <select
-            value={bindingFilter}
-            onChange={(e) => setBindingFilter(e.target.value)}
+            value={accountTypeFilter}
+            onChange={(e) => setAccountTypeFilter(e.target.value)}
             className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           >
-            <option value="all">All Bindings</option>
-            <option value="bound">Bound</option>
-            <option value="unbound">Unbound</option>
+            <option value="all">All Account Types</option>
+            <option value="savings">Savings</option>
+            <option value="current">Current</option>
+            <option value="fixed_deposit">Fixed Deposit</option>
           </select>
           <button
             className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={loadCustomers}
+            onClick={loadAccounts}
             disabled={loading}
           >
             {loading ? "Refreshing…" : "Refresh"}
@@ -217,117 +295,88 @@ const ManagerCustomers = () => {
             Export CSV
           </button>
         </div>
-
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
-            <span className="text-sm font-semibold text-indigo-900">
-              {selectedIds.size} selected
-            </span>
-            <button
-              onClick={handleBulkReset}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
-            >
-              Reset All Bindings
-            </button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Clear Selection
-            </button>
-          </div>
-        )}
       </div>
 
       {message && (
-        <p className="text-sm font-medium text-rose-600">{message}</p>
+        <div className={`rounded-2xl border p-4 ${
+          message.includes("success") || message.includes("updated") || message.includes("forwarded")
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-rose-200 bg-rose-50"
+        }`}>
+          <p className={`text-sm font-medium ${
+            message.includes("success") || message.includes("updated") || message.includes("forwarded")
+              ? "text-emerald-600"
+              : "text-rose-600"
+          }`}>{message}</p>
+        </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      {/* Customer Accounts Table */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
         <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.size === filtered.length && filtered.length > 0}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
+              <th 
+                className="cursor-pointer px-4 py-3 hover:bg-slate-100"
+                onClick={() => handleSort("customer_id")}
+              >
+                Customer ID {sortConfig.key === "customer_id" && (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
               <th 
                 className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                onClick={() => handleSort("owner")}
+                onClick={() => handleSort("name")}
               >
-                Owner {sortConfig.key === "owner" && (sortConfig.direction === "asc" ? "↑" : "↓")}
+                Name {sortConfig.key === "name" && (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
-              <th className="px-4 py-3">Certificate</th>
+              <th className="px-4 py-3">Account Number</th>
               <th 
                 className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                onClick={() => handleSort("branch")}
+                onClick={() => handleSort("account_type")}
               >
-                Branch {sortConfig.key === "branch" && (sortConfig.direction === "asc" ? "↑" : "↓")}
-              </th>
-              <th 
-                className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                onClick={() => handleSort("status")}
-              >
-                Status {sortConfig.key === "status" && (sortConfig.direction === "asc" ? "↑" : "↓")}
+                Account Type {sortConfig.key === "account_type" && (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
               <th 
                 className="cursor-pointer px-4 py-3 hover:bg-slate-100"
-                onClick={() => handleSort("binding_state")}
+                onClick={() => handleSort("account_status")}
               >
-                Binding {sortConfig.key === "binding_state" && (sortConfig.direction === "asc" ? "↑" : "↓")}
+                Status {sortConfig.key === "account_status" && (sortConfig.direction === "asc" ? "↑" : "↓")}
               </th>
-              <th className="px-4 py-3">Last Seen</th>
+              <th className="px-4 py-3">Balance (Read-only)</th>
+              <th className="px-4 py-3">KYC Status</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
-            {filtered.map((entry) => (
-              <tr key={entry.certificate_id} className={selectedIds.has(entry.certificate_id) ? "bg-indigo-50" : ""}>
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(entry.certificate_id)}
-                    onChange={(e) => handleSelectOne(entry.certificate_id, e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                </td>
-                <td className="px-4 py-3 font-semibold">{entry.owner}</td>
+            {filtered.map((account) => (
+              <tr key={account.customer_id} className="transition-colors hover:bg-slate-50">
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                  {entry.certificate_id}
+                  {account.customer_id}
                 </td>
-                <td className="px-4 py-3">{entry.branch?.label}</td>
+                <td className="px-4 py-3 font-semibold">{account.name}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                  {account.masked_account_number}
+                </td>
+                <td className="px-4 py-3 capitalize">{account.account_type?.toLowerCase()}</td>
                 <td className="px-4 py-3">
-                  <span className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${
-                    entry.status === "active" ? "bg-emerald-100 text-emerald-700" :
-                    entry.status === "revoked" ? "bg-rose-100 text-rose-700" :
-                    "bg-slate-100 text-slate-700"
-                  }`}>
-                    {entry.status}
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(account.account_status)}`}>
+                    {account.account_status}
                   </span>
                 </td>
-                <td className="px-4 py-3 capitalize">{entry.binding_state}</td>
-                <td className="px-4 py-3 text-slate-500">
-                  {entry.last_seen || "—"}
+                <td className="px-4 py-3 font-semibold text-slate-900">
+                  ₹ {Number(account.balance).toLocaleString("en-IN")}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleReset(entry.certificate_id)}
-                      className="rounded-2xl bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
-                    >
-                      Reset binding
-                    </button>
-                    <button
-                      onClick={() => setSelectedCustomer(entry)}
-                      className="rounded-2xl bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-100"
-                    >
-                      View Details
-                    </button>
-                  </div>
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold capitalize ${getKYCStatusColor(account.kyc_status)}`}>
+                    {account.kyc_status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => handleViewDetails(account.customer_id)}
+                    className="rounded-2xl bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-100"
+                  >
+                    View Details
+                  </button>
                 </td>
               </tr>
             ))}
@@ -337,9 +386,9 @@ const ManagerCustomers = () => {
                   className="px-4 py-6 text-center text-slate-500"
                   colSpan="8"
                 >
-                  {query || statusFilter !== "all" || bindingFilter !== "all" 
-                    ? "No customers match the current filters." 
-                    : "No customers found."}
+                  {query || statusFilter !== "all" || accountTypeFilter !== "all" 
+                    ? "No customer accounts match the current filters." 
+                    : "No customer accounts found."}
                 </td>
               </tr>
             )}
@@ -348,13 +397,13 @@ const ManagerCustomers = () => {
       </div>
 
       {/* Customer Detail Modal */}
-      {selectedCustomer && (
+      {selectedCustomer && !showStatusModal && !showForwardModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelectedCustomer(null)}>
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-start justify-between">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-6 flex items-start justify-between">
               <div>
-                <h3 className="text-2xl font-semibold text-slate-900">{selectedCustomer.owner}</h3>
-                <p className="mt-1 font-mono text-sm text-slate-500">{selectedCustomer.certificate_id}</p>
+                <h3 className="text-2xl font-bold text-slate-900">{selectedCustomer.name}</h3>
+                <p className="mt-1 font-mono text-sm text-slate-500">ID: {selectedCustomer.customer_id}</p>
               </div>
               <button
                 onClick={() => setSelectedCustomer(null)}
@@ -366,46 +415,264 @@ const ManagerCustomers = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</p>
-                  <p className="mt-1 text-lg font-semibold capitalize text-slate-900">{selectedCustomer.status}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Binding State</p>
-                  <p className="mt-1 text-lg font-semibold capitalize text-slate-900">{selectedCustomer.binding_state}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Branch</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{selectedCustomer.branch?.label}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Last Seen</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{selectedCustomer.last_seen || "Never"}</p>
+            <div className="space-y-6">
+              {/* Account Information */}
+              <div>
+                <h4 className="mb-4 text-lg font-bold text-slate-900">Account Information (Read-only)</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Account Number</p>
+                    <p className="mt-1 font-mono text-lg font-semibold text-slate-900">{selectedCustomer.masked_account_number}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Account Type</p>
+                    <p className="mt-1 text-lg font-semibold capitalize text-slate-900">{selectedCustomer.account_type?.toLowerCase()}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Balance (Read-only)</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">₹ {Number(selectedCustomer.balance).toLocaleString("en-IN")}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Branch Code</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">{selectedCustomer.branch_code}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Certificate ID</p>
-                <p className="mt-1 break-all font-mono text-sm text-slate-900">{selectedCustomer.certificate_id}</p>
+              {/* Status Information */}
+              <div>
+                <h4 className="mb-4 text-lg font-bold text-slate-900">Status Information</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Account Status</p>
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold ${getStatusColor(selectedCustomer.account_status)}`}>
+                      {selectedCustomer.account_status}
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">KYC Status</p>
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold capitalize ${getKYCStatusColor(selectedCustomer.kyc_status)}`}>
+                      {selectedCustomer.kyc_status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              {(selectedCustomer.email || selectedCustomer.mobile) && (
+                <div>
+                  <h4 className="mb-4 text-lg font-bold text-slate-900">Contact Information</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {selectedCustomer.email && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</p>
+                        <p className="mt-1 text-sm text-slate-900">{selectedCustomer.email}</p>
+                      </div>
+                    )}
+                    {selectedCustomer.mobile && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Mobile</p>
+                        <p className="mt-1 text-sm text-slate-900">{selectedCustomer.mobile}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Account Dates */}
+              <div>
+                <h4 className="mb-4 text-lg font-bold text-slate-900">Account Timeline</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Account Opening Date</p>
+                    <p className="mt-1 text-sm text-slate-900">
+                      {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString() : "N/A"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Last Updated</p>
+                    <p className="mt-1 text-sm text-slate-900">
+                      {selectedCustomer.updated_at ? new Date(selectedCustomer.updated_at).toLocaleDateString() : "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Limited Actions */}
+              <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-6">
+                <h4 className="mb-4 text-lg font-bold text-amber-900">Limited Manager Actions</h4>
+                <p className="mb-4 text-sm text-amber-700">
+                  As a manager, you can only mark accounts as Limited/Active or forward for review. 
+                  You cannot modify balances, transactions, or credentials.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {selectedCustomer.account_status !== "FROZEN" && (
+                    <button
+                      onClick={() => {
+                        setStatusChangeData({ status: "", reason: "" });
+                        setShowStatusModal(true);
+                      }}
+                      className="flex-1 rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700"
+                    >
+                      Change Account Status
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setForwardData({ reason: "", priority: "normal" });
+                      setShowForwardModal(true);
+                    }}
+                    className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    Forward for Review
+                  </button>
+                </div>
+                {selectedCustomer.account_status === "FROZEN" && (
+                  <p className="mt-3 text-sm font-semibold text-rose-600">
+                    ⚠️ This account is FROZEN and requires system administrator intervention.
+                  </p>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Modal */}
+      {showStatusModal && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowStatusModal(false)}>
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-2xl font-bold text-slate-900">Change Account Status</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Update the status for <strong>{selectedCustomer.name}</strong>
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  New Status
+                </label>
+                <select
+                  value={statusChangeData.status}
+                  onChange={(e) => setStatusChangeData({ ...statusChangeData, status: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">Select Status</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="LIMITED">Limited</option>
+                </select>
+                <p className="mt-2 text-xs text-slate-500">
+                  Note: Only ACTIVE and LIMITED statuses can be set by managers.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Reason (Optional)
+                </label>
+                <textarea
+                  value={statusChangeData.reason}
+                  onChange={(e) => setStatusChangeData({ ...statusChangeData, reason: e.target.value })}
+                  placeholder="Provide a reason for this status change..."
+                  rows="3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-semibold text-amber-900">⚠️ Confirmation Required</p>
+                <p className="mt-1 text-xs text-amber-700">
+                  This action will be logged in the global audit trail. Ensure you have proper authorization.
+                </p>
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    handleReset(selectedCustomer.certificate_id);
-                    setSelectedCustomer(null);
-                  }}
-                  className="flex-1 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
+                  onClick={handleStatusChange}
+                  disabled={!statusChangeData.status || loading}
+                  className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Reset Device Binding
+                  {loading ? "Updating..." : "Confirm Change"}
                 </button>
                 <button
-                  onClick={() => setSelectedCustomer(null)}
+                  onClick={() => setShowStatusModal(false)}
                   className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  Close
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forward for Review Modal */}
+      {showForwardModal && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowForwardModal(false)}>
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-2xl font-bold text-slate-900">Forward for Review</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Escalate <strong>{selectedCustomer.name}</strong>'s account to compliance/admin team
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Reason <span className="text-rose-600">*</span>
+                </label>
+                <textarea
+                  value={forwardData.reason}
+                  onChange={(e) => setForwardData({ ...forwardData, reason: e.target.value })}
+                  placeholder="Explain why this account needs further review..."
+                  rows="4"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={forwardData.priority}
+                  onChange={(e) => setForwardData({ ...forwardData, priority: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="normal">Normal Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-xs font-semibold text-indigo-900">ℹ️ Information</p>
+                <p className="mt-1 text-xs text-indigo-700">
+                  This will create an escalation ticket for the compliance/admin team to review.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleForwardForReview}
+                  disabled={!forwardData.reason || loading}
+                  className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Forwarding..." : "Forward Account"}
+                </button>
+                <button
+                  onClick={() => setShowForwardModal(false)}
+                  className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

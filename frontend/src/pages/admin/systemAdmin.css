@@ -1,23 +1,50 @@
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
+/* ========================================================================
+   LIGHT MODE (DEFAULT)
+   ======================================================================== */
 :root {
+    --sys-bg        : linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    --sys-card      : rgba(255, 255, 255, 0.95);
+    --sys-card-alt  : rgba(248, 250, 252, 0.9);
+    --sys-border    : rgba(148, 163, 184, 0.3);
+    --sys-accent    : #3b82f6;
+    --sys-accent-alt: #06b6d4;
+    --sys-danger    : #ef4444;
+    --sys-text      : #1e293b;
+    --sys-text-muted: #64748b;
+    --sys-input-bg  : rgba(255, 255, 255, 0.9);
+}
+
+/* ========================================================================
+   DARK MODE
+   ======================================================================== */
+.dark-mode {
     --sys-bg        : radial-gradient(circle at 25% 25%, #18253a, #050910 70%);
     --sys-card      : rgba(10, 25, 47, 0.9);
     --sys-card-alt  : rgba(15, 36, 63, 0.85);
     --sys-border    : rgba(255, 255, 255, 0.12);
-    --sys-accent    : #ffb703;
-    --sys-accent-alt: #00d1b2;
+    --sys-accent    : #60a5fa;
+    --sys-accent-alt: #22d3ee;
     --sys-danger    : #ff4d67;
+    --sys-text      : #f8fafc;
+    --sys-text-muted: rgba(255, 255, 255, 0.6);
+    --sys-input-bg  : rgba(255, 255, 255, 0.05);
 }
 
 .sys-admin-shell {
     font-family  : "Space Grotesk", "IBM Plex Sans", sans-serif;
     background   : var(--sys-bg);
-    color        : #f8fafc;
+    color        : var(--sys-text);
     min-height   : calc(100vh - 80px);
     padding      : 24px;
     border-radius: 24px;
-    box-shadow   : inset 0 0 80px rgba(0, 0, 0, 0.35);
+    box-shadow   : 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition   : background 0.3s ease, color 0.3s ease;
+}
+
+.dark-mode .sys-admin-shell {
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
 }
 
 .sys-admin-hero {
@@ -29,13 +56,21 @@
     padding        : 32px;
     border         : 1px solid var(--sys-border);
     border-radius  : 24px;
-    background     : linear-gradient(135deg, rgba(4, 85, 98, 0.9), rgba(2, 19, 54, 0.85));
+    background     : var(--sys-card);
+    box-shadow     : 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition     : all 0.3s ease;
+}
+
+.dark-mode .sys-admin-hero {
+    background: linear-gradient(135deg, rgba(4, 85, 98, 0.9), rgba(2, 19, 54, 0.85));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .sys-admin-hero h1 {
     margin        : 0;
     font-size     : 2.4rem;
     letter-spacing: -0.5px;
+    color         : var(--sys-text);
 }
 
 .sys-admin-metrics {
@@ -48,15 +83,25 @@
     min-width    : 150px;
     padding      : 12px 20px;
     border-radius: 999px;
-    border       : 1px solid rgba(255, 255, 255, 0.2);
-    background   : rgba(0, 0, 0, 0.25);
+    border       : 1px solid var(--sys-border);
+    background   : var(--sys-card-alt);
     text-align   : center;
+    transition   : all 0.3s ease;
+}
+
+.dark-mode .sys-metric-pill {
+    background: rgba(0, 0, 0, 0.25);
 }
 
 .sys-metric-pill span {
     display    : block;
     font-size  : 1.4rem;
     font-weight: 600;
+    color      : var(--sys-text);
+}
+
+.sys-metric-pill small {
+    color: var(--sys-text-muted);
 }
 
 .sys-admin-grid {
@@ -71,10 +116,19 @@
     border-radius: 20px;
     padding      : 20px 24px;
     border       : 1px solid var(--sys-border);
-    box-shadow   : 0 20px 40px rgba(0, 0, 0, 0.35);
+    box-shadow   : 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition   : all 0.3s ease;
+}
+
+.dark-mode .sys-card {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
 .sys-card.accent {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.12));
+}
+
+.dark-mode .sys-card.accent {
     background: linear-gradient(135deg, rgba(255, 183, 3, 0.15), rgba(0, 209, 178, 0.12));
 }
 
@@ -82,7 +136,7 @@
     font-size     : 1.2rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color         : rgba(255, 255, 255, 0.75);
+    color         : var(--sys-text-muted);
     margin-bottom : 16px;
 }
 
@@ -96,18 +150,33 @@
     font-size     : 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color         : rgba(255, 255, 255, 0.5);
+    color         : var(--sys-text-muted);
 }
 
 .sys-form input,
 .sys-form textarea,
 .sys-form select {
-    background   : rgba(255, 255, 255, 0.05);
-    border       : 1px solid rgba(255, 255, 255, 0.15);
-    color        : #f8fafc;
+    background   : var(--sys-input-bg);
+    border       : 1px solid var(--sys-border);
+    color        : var(--sys-text);
     font-size    : 0.95rem;
     padding      : 10px 12px;
     border-radius: 12px;
+    transition   : all 0.3s ease;
+}
+
+.sys-form input:focus,
+.sys-form textarea:focus,
+.sys-form select:focus {
+    outline: none;
+    border-color: var(--sys-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark-mode .sys-form input:focus,
+.dark-mode .sys-form textarea:focus,
+.dark-mode .sys-form select:focus {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
 .sys-form textarea {
@@ -126,7 +195,7 @@
 
 .sys-form button.primary {
     background : var(--sys-accent);
-    color      : #0b1b2b;
+    color      : #ffffff;
     font-weight: 600;
 }
 
@@ -144,6 +213,12 @@
 }
 
 .sys-inline-actions button {
+    background: var(--sys-card-alt);
+    color     : var(--sys-text);
+    border    : 1px solid var(--sys-border);
+}
+
+.dark-mode .sys-inline-actions button {
     background: rgba(255, 255, 255, 0.08);
     color     : #f8fafc;
 }
@@ -161,17 +236,19 @@
 
 .sys-chip {
     border-radius : 999px;
-    border        : 1px solid rgba(255, 255, 255, 0.2);
+    border        : 1px solid var(--sys-border);
     padding       : 6px 10px;
     font-size     : 0.8rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+    color         : var(--sys-text);
+    background    : var(--sys-card-alt);
 }
 
 .sys-crl-list {
     max-height: 240px;
     overflow  : auto;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--sys-border);
     margin-top: 16px;
 }
 
@@ -180,7 +257,7 @@
     justify-content: space-between;
     gap            : 12px;
     padding        : 12px 0;
-    border-bottom  : 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom  : 1px solid var(--sys-border);
 }
 
 .sys-feed {
@@ -193,11 +270,12 @@
 
 .sys-feed li {
     padding      : 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--sys-border);
+    color        : var(--sys-text);
 }
 
 .sys-feed small {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--sys-text-muted);
 }
 
 .sys-grid-split {
@@ -209,23 +287,34 @@
 .sys-table {
     width          : 100%;
     border-collapse: collapse;
-    background     : rgba(255, 255, 255, 0.02);
+    background     : var(--sys-card-alt);
     border-radius  : 16px;
     overflow       : hidden;
+    border         : 1px solid var(--sys-border);
+}
+
+.dark-mode .sys-table {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .sys-table th,
 .sys-table td {
     padding      : 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--sys-border);
     text-align   : left;
+    color        : var(--sys-text);
 }
 
 .sys-table th {
     text-transform: uppercase;
     font-size     : 0.75rem;
     letter-spacing: 0.08em;
-    color         : rgba(255, 255, 255, 0.6);
+    color         : var(--sys-text-muted);
+    background    : var(--sys-card);
+}
+
+.dark-mode .sys-table th {
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .sys-inline-actions .link,
@@ -237,6 +326,12 @@
     letter-spacing: 0.08em;
     font-size     : 0.75rem;
     cursor        : pointer;
+    transition    : all 0.2s ease;
+}
+
+.sys-inline-actions .link:hover,
+.sys-crl-row .link:hover {
+    opacity: 0.8;
 }
 
 .sys-inline-actions .link.danger,
