@@ -29,7 +29,7 @@ const CustomerProfile = ({ user }) => {
       <div className="profile-grid">
         <article className="profile-card">
           <h3>Account Metadata</h3>
-          <InfoRow label="Name" value={user?.name} />
+          <InfoRow label="Name" value={user?.username} />
           <InfoRow label="Email" value={user?.email} />
           <InfoRow label="Certificate Id" value={certificateId} />
           <InfoRow label="Role" value={user?.role} />
@@ -72,7 +72,7 @@ const AuditorProfile = ({ user }) => (
     <div className="profile-grid">
       <article className="profile-card">
         <h3>Operator Metadata</h3>
-        <InfoRow label="Name" value={user?.name} />
+        <InfoRow label="Name" value={user?.username} />
         <InfoRow label="Email" value={user?.email} />
         <InfoRow label="Role" value={user?.role} />
       </article>

@@ -42,6 +42,7 @@ const CustomerAccounts = () => {
 
   useEffect(() => {
     loadAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, accountTypeFilter]);
 
   const filtered = useMemo(() => {
@@ -392,7 +393,7 @@ const CustomerAccounts = () => {
 
       {/* Customer Detail Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelectedCustomer(null)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelectedCustomer(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between">
               <div>
@@ -501,7 +502,7 @@ const CustomerAccounts = () => {
       {/* Status Change Modal */}
       {showStatusModal && selectedCustomer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4"
           onClick={() => setShowStatusModal(false)}
         >
           <div
@@ -569,7 +570,7 @@ const CustomerAccounts = () => {
       {/* Forward for Review Modal */}
       {showForwardModal && selectedCustomer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4"
           onClick={() => setShowForwardModal(false)}
         >
           <div

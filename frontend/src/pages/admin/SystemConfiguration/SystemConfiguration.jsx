@@ -133,16 +133,6 @@ const SystemConfiguration = () => {
     );
   };
 
-  const getCategoryIcon = (category) => {
-    const icons = {
-      transaction: "💰",
-      session: "🔐",
-      operational: "⚙️",
-      notification: "🔔",
-    };
-    return icons[category] || "📋";
-  };
-
   const getCategoryTitle = (category) => {
     const titles = {
       transaction: "Transaction Settings",

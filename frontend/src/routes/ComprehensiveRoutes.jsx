@@ -34,7 +34,6 @@ import BeneficiaryManagement from "../pages/customer/BeneficiaryManagement";
 import ManagerDashboard from "../pages/manager/ManagerDashboard";
 import ManagerCustomers from "../pages/manager/ManagerCustomers";
 import ApproveTransaction from "../pages/manager/ApproveTransaction";
-import ManagerCertificates from "../pages/manager/ManagerCertificates";
 import ManagerReports from "../pages/manager/ManagerReports";
 import ManagerAuditLogs from "../pages/manager/ManagerAuditLogs";
 import BranchAudit from "../pages/manager/BranchAudit";
@@ -45,9 +44,6 @@ import AccountMonitoring from "../pages/manager/AccountMonitoring";
 // Auditor Clerk Pages
 import AuditorClerkDashboard from "../pages/auditorClerk/AuditorClerkDashboard";
 import AuditTransactions from "../pages/auditorClerk/AuditTransactions/AuditTransactions";
-import AuditLogs from "../pages/auditorClerk/AuditLogs";
-import AuditCertificates from "../pages/auditorClerk/AuditCertificates";
-import AuditReports from "../pages/auditorClerk/AuditReports";
 import UserActivityLogs from "../pages/auditorClerk/UserActivityLogs";
 import SecurityEncryptionLogs from "../pages/auditorClerk/SecurityEncryptionLogs";
 import DataIntegrityVerification from "../pages/auditorClerk/DataIntegrityVerification";
@@ -60,7 +56,6 @@ import SystemAdminDashboard from "../pages/admin/SystemAdminDashboard";
 import SystemAdminUserInventory from "../pages/admin/SystemAdminUserInventory";
 import SystemAdminRoleManagement from "../pages/admin/SystemAdminRoleManagement";
 import SystemAdminCertificateStudio from "../pages/admin/SystemAdminCertificateStudio";
-import SystemAdminCrlCenter from "../pages/admin/SystemAdminCrlCenter";
 import SystemAdminAuthorityHub from "../pages/admin/SystemAdminAuthorityHub";
 import SystemAdminSecurityOps from "../pages/admin/SystemAdminSecurityOps";
 import SystemAdminAuditNetwork from "../pages/admin/SystemAdminAuditNetwork";
@@ -102,14 +97,7 @@ const ComprehensiveRoutes = () => {
 
   // Loading state
   if (isVerifyingSession) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="loading-spinner mb-4"></div>
-          <p className="text-slate-600">Verifying session...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

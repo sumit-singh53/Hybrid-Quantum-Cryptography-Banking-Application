@@ -48,6 +48,7 @@ const SecurityEncryptionLogs = () => {
 
   useEffect(() => {
     loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, statusFilter, dateRange]);
 
   const handleApplyFilters = () => {

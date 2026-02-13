@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { createCertificateRequest, getMyCertificateRequests, getMyCertificateInfo } from '../../../services/customerService';
+import { createCertificateRequest, getMyCertificateRequests, getMyCertificateInfo, enrollApprovedCertificate } from '../../../services/customerService';
 import './CertificateRequest.css';
 
 const CertificateRequest = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
@@ -81,6 +82,159 @@ const CertificateRequest = () => {
       setError(err.response?.data?.message || 'Failed to submit request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDownloadCertificate = (userId) => {
+    // Download certificate
+    const downloadUrl = `http://localhost:5001/api/customer/download-certificate/${userId}`;
+    window.open(downloadUrl, '_blank');
+  };
+
+  const extractDeviceSecret = (adminNotes) => {
+    if (!adminNotes) return null;
+    const match = adminNotes.match(/Device Secret:\s*([^\s\n]+)/);
+    return match ? match[1] : null;
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setSuccess('Device secret copied to clipboard!');
+      setTimeout(() => setSuccess(''), 3000);
+    }).catch(() => {
+      setError('Failed to copy to clipboard');
+      setTimeout(() => setError(''), 3000);
+    });
+  };
+
+  const handleReEnroll = async (request) => {
+    setError('');
+    setSuccess('');
+    setEnrolling(true);
+
+    try {
+      // Check if already used
+      if (request.admin_notes && request.admin_notes.includes('Certificate issued on re-enrollment')) {
+        setError('This certificate request has already been used for re-enrollment. Please create a new request.');
+        setEnrolling(false);
+        return;
+      }
+
+      // Generate new keypairs
+      console.log('[RE-ENROLL] Generating new keypairs...');
+      
+      // Generate RSA keypair
+      const rsaKeyPair = await window.crypto.subtle.generateKey(
+        {
+          name: 'RSA-PSS',
+          modulusLength: 3072,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: 'SHA-256',
+        },
+        true,
+        ['sign', 'verify']
+      );
+
+      // Generate ML-KEM (Kyber) keypair - using placeholder for now
+      // In production, use actual Kyber implementation
+      const kyberPublicKey = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(1184))));
+
+      // Export RSA public key
+      const rsaPublicKey = await window.crypto.subtle.exportKey('spki', rsaKeyPair.publicKey);
+      const rsaPublicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(rsaPublicKey)));
+
+      console.log('[RE-ENROLL] Keys generated, calling backend...');
+
+      // Call backend to issue certificate with new keys
+      const response = await enrollApprovedCertificate(request.user_id, {
+        rsa_spki: rsaPublicKeyB64,
+        ml_kem_public_key: kyberPublicKey,
+        pq_public_key: null // Optional
+      });
+
+      console.log('[RE-ENROLL] Certificate issued:', response);
+
+      // Store private keys in IndexedDB
+      const dbRequest = indexedDB.open('PQBankingKeyStore', 1);
+      
+      dbRequest.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('keys')) {
+          db.createObjectStore('keys');
+        }
+      };
+
+      dbRequest.onsuccess = async (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['keys'], 'readwrite');
+        const store = transaction.objectStore('keys');
+
+        // Export and store RSA private key
+        const rsaPrivateKey = await window.crypto.subtle.exportKey('pkcs8', rsaKeyPair.privateKey);
+        const rsaPrivateKeyB64 = btoa(String.fromCharCode(...new Uint8Array(rsaPrivateKey)));
+        
+        store.put(rsaPrivateKeyB64, 'rsa_private_key');
+        store.put(response.device_secret, 'device_secret');
+        store.put(response.certificate_pem, 'certificate');
+
+        console.log('[RE-ENROLL] Keys stored in IndexedDB');
+
+        // Download certificate file
+        const certBlob = new Blob([response.certificate_pem], { type: 'application/x-pem-file' });
+        const certUrl = window.URL.createObjectURL(certBlob);
+        const certLink = document.createElement('a');
+        certLink.href = certUrl;
+        certLink.download = `certificate_${request.user_id}.pem`;
+        document.body.appendChild(certLink);
+        certLink.click();
+        document.body.removeChild(certLink);
+        window.URL.revokeObjectURL(certUrl);
+
+        // Download RSA private key file
+        const rsaPrivateKeyPem = `-----BEGIN PRIVATE KEY-----\n${rsaPrivateKeyB64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+        const keyBlob = new Blob([rsaPrivateKeyPem], { type: 'application/x-pem-file' });
+        const keyUrl = window.URL.createObjectURL(keyBlob);
+        const keyLink = document.createElement('a');
+        keyLink.href = keyUrl;
+        keyLink.download = `rsa_private_${request.user_id}.pem`;
+        document.body.appendChild(keyLink);
+        keyLink.click();
+        document.body.removeChild(keyLink);
+        window.URL.revokeObjectURL(keyUrl);
+
+        setSuccess(`✅ Certificate enrolled successfully! 
+        
+IMPORTANT - Save these files:
+1. Certificate: certificate_${request.user_id}.pem
+2. Private Key: rsa_private_${request.user_id}.pem  
+3. Device Secret: ${response.device_secret}
+
+Logging out in 10 seconds...`);
+        
+        // Reload requests to show updated status
+        await loadData();
+        
+        // Auto-logout after 10 seconds (increased from 5)
+        setTimeout(() => {
+          // Clear auth token
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          
+          // Redirect to login
+          window.location.href = '/login';
+        }, 10000);
+      };
+
+      dbRequest.onerror = () => {
+        setError('Failed to store keys in browser');
+      };
+
+    } catch (err) {
+      console.error('[RE-ENROLL] Error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to re-enroll certificate';
+      setError(errorMessage);
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -312,6 +466,40 @@ const CertificateRequest = () => {
                           <label>Admin Notes:</label>
                           <p>{req.admin_notes}</p>
                         </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {req.status === 'APPROVED' && (
+                    <div className="request-actions">
+                      {req.admin_notes && req.admin_notes.includes('Certificate issued on re-enrollment') ? (
+                        <div className="reenroll-section">
+                          <h4>✅ Certificate Already Generated</h4>
+                          <p>This request has already been used to generate a certificate. If you need a new certificate, please create a new request.</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="reenroll-section">
+                            <h4>🎉 Your certificate request has been approved!</h4>
+                            <p>Click the button below to generate your new certificate with fresh cryptographic keys.</p>
+                            <button
+                              onClick={() => handleReEnroll(req)}
+                              className="reenroll-button"
+                              disabled={enrolling}
+                            >
+                              {enrolling ? '🔄 Generating Certificate...' : '🔑 Re-enroll & Generate Certificate'}
+                            </button>
+                          </div>
+                          <div className="reenroll-instructions">
+                            <h4>After re-enrollment:</h4>
+                            <ol>
+                              <li>Your new certificate will be downloaded automatically</li>
+                              <li>Your device secret will be displayed (save it securely!)</li>
+                              <li>Logout from your current session</li>
+                              <li>Login again - your browser will use the new certificate automatically</li>
+                            </ol>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}

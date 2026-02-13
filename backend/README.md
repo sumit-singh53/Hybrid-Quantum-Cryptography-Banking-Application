@@ -20,6 +20,7 @@ The backend handles:
 - MySQL
 - PyTest
 
+
 ---
 
 ## 🔐 Golden Rule Security Layers
@@ -35,9 +36,7 @@ Every certificate now carries an explicit `security_layers` claim that enumerate
 - Device secrets remain the only factor required to unlock certificates or QR code sessions, keeping ML-KEM isolated to data protection rather than identity proofing.
 
 ---
-
 ## 🔥 Feature 7 — Cryptographic Accountability
-
 Each successful certificate login now emits a **signed intent** that captures the certificate hash, lineage, declared authority, the precise UTC timestamp, and the origin IP/location headers. These events are chained inside `instance/accountability_log.json` and can be reconstructed through the auditor-clerk-only endpoint `POST /api/audit/accountability-report`, which returns:
 
 - The certificate metadata (lineage, defense version, allowed actions, issuance window)

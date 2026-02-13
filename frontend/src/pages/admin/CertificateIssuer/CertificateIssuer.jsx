@@ -116,7 +116,7 @@ const CertificateIssuer = ({ onIssued, sectionId }) => {
   const [issuing, setIssuing] = useState(false);
   const [issuingStatus, setIssuingStatus] = useState("");
   const [banner, setBanner] = useState(null);
-  const [bundles, setBundles] = useState([]);
+  const [, setBundles] = useState([]);
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);

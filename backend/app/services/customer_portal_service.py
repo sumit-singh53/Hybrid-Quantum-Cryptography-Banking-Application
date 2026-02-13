@@ -42,8 +42,9 @@ class CustomerPortalService:
         )
 
     @classmethod
-    def _synthetic_accounts(cls, user_id: str) -> List[Dict[str, Any]]:
-        customer = Customer.query.get(user_id)
+    def _synthetic_accounts(cls, user_id: str, customer: Optional[Customer] = None) -> List[Dict[str, Any]]:
+        if customer is None:
+            customer = Customer.query.get(user_id)
         
         # If no customer record, return fallback with synthetic data
         if not customer:
@@ -98,8 +99,9 @@ class CustomerPortalService:
         return query.all()
 
     @classmethod
-    def compute_account_balance(cls, user_id: str) -> float:
-        customer = Customer.query.get(user_id)
+    def compute_account_balance(cls, user_id: str, customer: Optional[Customer] = None) -> float:
+        if customer is None:
+            customer = Customer.query.get(user_id)
         if customer:
             return round(float(customer.balance or 0.0), 2)
         transactions = cls._user_transactions(user_id)
@@ -148,9 +150,10 @@ class CustomerPortalService:
         }
 
     @staticmethod
-    def recent_transactions(user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def recent_transactions(user_id: str, limit: int = 5, customer: Optional[Customer] = None) -> List[Dict[str, Any]]:
         records = CustomerPortalService._user_transactions(user_id, limit=limit)
-        customer = Customer.query.get(user_id)
+        if customer is None:
+            customer = Customer.query.get(user_id)
         customer_account = customer.account_number if customer else None
         
         return [
@@ -199,10 +202,14 @@ class CustomerPortalService:
         certificate: Dict[str, str],
         session_binding: Optional[Dict[str, str]],
     ) -> Dict[str, Any]:
-        balance = cls.compute_account_balance(user_id)
+        # Fetch customer once to avoid multiple DB queries
+        customer = Customer.query.get(user_id)
+        
+        # Pass customer to methods to avoid redundant queries
+        balance = cls.compute_account_balance(user_id, customer=customer)
         certificate_summary = cls.summarize_certificate(certificate)
-        recent_transactions = cls.recent_transactions(user_id)
-        accounts = cls._synthetic_accounts(user_id)
+        recent_transactions = cls.recent_transactions(user_id, customer=customer)
+        accounts = cls._synthetic_accounts(user_id, customer=customer)
         last_login = cls.last_login_snapshot(user_id)
         latest_audit = cls.audit_trail(certificate.get("certificate_id"), limit=1)
         session_device = (session_binding or {}).get("device_id")

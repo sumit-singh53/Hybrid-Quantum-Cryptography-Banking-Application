@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../../../services/api";
 import "./AuditTransactions.css";
 
@@ -7,7 +7,7 @@ const AuditTransactions = () => {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [success] = useState(null);
   
   // Filter states
   const [statusFilter, setStatusFilter] = useState("all");
@@ -29,7 +29,7 @@ const AuditTransactions = () => {
   // Sort state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "desc" });
 
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     setLoading(true);
     try {
       // Build query parameters
@@ -52,7 +52,7 @@ const AuditTransactions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, dateFrom, dateTo, amountMin, amountMax, searchQuery, currentPage, perPage]);
 
   const loadStatistics = async () => {
     try {
@@ -65,7 +65,7 @@ const AuditTransactions = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, loadTransactions]);
 
   useEffect(() => {
     loadStatistics();

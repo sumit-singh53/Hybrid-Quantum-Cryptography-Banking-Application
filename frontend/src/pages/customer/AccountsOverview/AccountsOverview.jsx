@@ -4,6 +4,7 @@ import {
   fetchCustomerAccounts,
   fetchCustomerTransactions,
   fetchCustomerAccountSummary,
+  fetchCustomerProfile,
 } from "../../../services/customerService";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -11,20 +12,23 @@ const AccountsOverview = () => {
   const [accountsData, setAccountsData] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [accountSummary, setAccountSummary] = useState(null);
+  const [profileData, setProfileData] = useState(null);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
     const loadAccounts = async () => {
       try {
-        const [accounts, transactions, summary] = await Promise.all([
+        const [accounts, transactions, summary, profile] = await Promise.all([
           fetchCustomerAccounts(),
           fetchCustomerTransactions(),
           fetchCustomerAccountSummary().catch(() => null), // Fallback if new endpoint not available
+          fetchCustomerProfile().catch(() => null), // Fetch profile data
         ]);
         setAccountsData(accounts);
         setRecentTransactions(transactions || []);
         setAccountSummary(summary);
+        setProfileData(profile);
       } catch (err) {
         setError(
           err?.response?.data?.message || "Unable to load account information",
@@ -33,6 +37,19 @@ const AccountsOverview = () => {
     };
 
     loadAccounts();
+    
+    // Reload data when user navigates back to this page
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadAccounts();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (error) {
@@ -66,6 +83,11 @@ const AccountsOverview = () => {
   const branchCode = accountSummary?.account_details?.branch_code || "MUM-HQ";
   const openingDate = accountSummary?.account_details?.opening_date || primaryAccount?.created_at;
 
+  // Use profile data if available, otherwise fall back to user from auth context
+  const displayName = profileData?.full_name || user?.full_name || user?.username || "Account Holder";
+  const displayEmail = profileData?.email || user?.email || "Not provided";
+  const displayUsername = profileData?.username || user?.username || "Not set";
+
   return (
     <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
 
@@ -75,7 +97,7 @@ const AccountsOverview = () => {
           {/* Avatar */}
           <div className="flex-shrink-0">
             <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-3xl font-bold text-white shadow-lg shadow-indigo-500/30">
-              {user?.full_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
+              {displayName.charAt(0).toUpperCase()}
             </div>
           </div>
 
@@ -83,7 +105,7 @@ const AccountsOverview = () => {
           <div className="flex-1 space-y-4">
             <div>
               <h3 className="text-2xl font-bold text-slate-900">
-                {user?.full_name || user?.username || "Account Holder"}
+                {displayName}
               </h3>
               <p className="mt-1 text-sm text-slate-500">Customer Account</p>
             </div>
@@ -98,7 +120,7 @@ const AccountsOverview = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email Address</p>
-                  <p className="mt-1 truncate text-sm font-medium text-slate-900">{user?.email || "Not provided"}</p>
+                  <p className="mt-1 truncate text-sm font-medium text-slate-900">{displayEmail}</p>
                 </div>
               </div>
 
@@ -111,7 +133,7 @@ const AccountsOverview = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
-                  <p className="mt-1 truncate text-sm font-medium text-slate-900">{user?.username || "Not set"}</p>
+                  <p className="mt-1 truncate text-sm font-medium text-slate-900">{displayUsername}</p>
                 </div>
               </div>
 

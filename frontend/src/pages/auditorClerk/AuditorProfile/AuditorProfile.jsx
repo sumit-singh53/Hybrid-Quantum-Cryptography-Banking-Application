@@ -43,7 +43,7 @@ const AuditorProfile = () => {
         <dl className="mt-4 grid gap-3 text-sm text-slate-300">
           <div className="flex items-start justify-between">
             <dt className="text-slate-400">Name</dt>
-            <dd>{profile.user?.name}</dd>
+            <dd>{profile.user?.username}</dd>
           </div>
           <div className="flex items-start justify-between">
             <dt className="text-slate-400">User ID</dt>

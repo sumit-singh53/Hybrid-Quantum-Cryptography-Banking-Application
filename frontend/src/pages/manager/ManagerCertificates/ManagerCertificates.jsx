@@ -342,7 +342,7 @@ const ManagerCertificates = () => {
 
       {/* Revoke Confirmation Modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelected(null)}>
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold text-slate-900">Revoke Certificate</h3>
             <div className="mt-4 space-y-4">
@@ -384,7 +384,7 @@ const ManagerCertificates = () => {
 
       {/* Certificate Detail Modal */}
       {detailView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setDetailView(null)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setDetailView(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between">
               <div>

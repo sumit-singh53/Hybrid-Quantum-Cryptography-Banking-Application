@@ -1,4 +1,3 @@
-import { formatRelativeTime } from "../../../utils/dateFormatter";
 import Pagination from "../../../components/common/Pagination";
 import "./GlobalAuditFeed.css";
 

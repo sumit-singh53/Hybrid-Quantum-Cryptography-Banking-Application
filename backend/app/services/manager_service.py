@@ -221,65 +221,136 @@ class ManagerService:
 
     @classmethod
     def dashboard_snapshot(cls) -> Dict[str, Any]:
-        pending = cls.pending_transactions()
-        high_value = cls.high_value_alerts()
+        """Optimized dashboard snapshot with error handling."""
+        try:
+            pending = cls.pending_transactions()
+        except Exception as e:
+            print(f"Error loading pending transactions: {e}")
+            pending = []
+        
+        try:
+            high_value = cls.high_value_alerts()
+        except Exception as e:
+            print(f"Error loading high value alerts: {e}")
+            high_value = []
         
         # Generate risk feed from current state
         risk_feed = []
-        if len(high_value) > 0:
-            risk_feed.append({
-                "id": "high-value-alert",
-                "title": f"{len(high_value)} High-Value Transactions Pending",
-                "detail": f"Total value: ₹{sum(float(t.get('amount', 0)) for t in high_value):,.0f}"
-            })
-        
-        stale_count = len([p for p in pending if p.get("risk", {}).get("stale", False)])
-        if stale_count > 0:
-            risk_feed.append({
-                "id": "stale-alert",
-                "title": f"{stale_count} Stale Transactions",
-                "detail": "Pending for over 12 hours - require attention"
-            })
-        
-        critical_count = len([p for p in pending if p.get("risk", {}).get("level") == "critical"])
-        if critical_count > 0:
-            risk_feed.append({
-                "id": "critical-risk",
-                "title": "Critical Risk Transactions Detected",
-                "detail": f"{critical_count} transactions require immediate review"
-            })
+        try:
+            if len(high_value) > 0:
+                risk_feed.append({
+                    "id": "high-value-alert",
+                    "title": f"{len(high_value)} High-Value Transactions Pending",
+                    "detail": f"Total value: ₹{sum(float(t.get('amount', 0)) for t in high_value):,.0f}"
+                })
+            
+            stale_count = len([p for p in pending if p.get("risk", {}).get("stale", False)])
+            if stale_count > 0:
+                risk_feed.append({
+                    "id": "stale-alert",
+                    "title": f"{stale_count} Stale Transactions",
+                    "detail": "Pending for over 12 hours - require attention"
+                })
+            
+            critical_count = len([p for p in pending if p.get("risk", {}).get("level") == "critical"])
+            if critical_count > 0:
+                risk_feed.append({
+                    "id": "critical-risk",
+                    "title": "Critical Risk Transactions Detected",
+                    "detail": f"{critical_count} transactions require immediate review"
+                })
+        except Exception as e:
+            print(f"Error generating risk feed: {e}")
         
         # Calculate oldest pending
         oldest_pending = "Queue is fresh"
-        if pending:
-            oldest_age = max(p.get("age_minutes", 0) for p in pending)
-            if oldest_age >= 60:
-                oldest_pending = f"Oldest: {oldest_age // 60}h {oldest_age % 60}m ago"
-            elif oldest_age > 0:
-                oldest_pending = f"Oldest: {oldest_age:.0f}m ago"
+        try:
+            if pending:
+                oldest_age = max(p.get("age_minutes", 0) for p in pending)
+                if oldest_age >= 60:
+                    oldest_pending = f"Oldest: {oldest_age // 60}h {oldest_age % 60}m ago"
+                elif oldest_age > 0:
+                    oldest_pending = f"Oldest: {oldest_age:.0f}m ago"
+        except Exception as e:
+            print(f"Error calculating oldest pending: {e}")
         
         # Count high-risk transactions
-        high_risk_count = len([p for p in pending if p.get("risk", {}).get("is_high_value", False)]) + critical_count
+        high_risk_count = 0
+        try:
+            critical_count = len([p for p in pending if p.get("risk", {}).get("level") == "critical"])
+            high_risk_count = len([p for p in pending if p.get("risk", {}).get("is_high_value", False)]) + critical_count
+        except Exception as e:
+            print(f"Error counting high risk: {e}")
         
         # Find highest risk branch
-        branch_health = cls._branch_health()
         highest_risk_branch = "No alerts"
-        if branch_health:
-            critical_branches = [b for b in branch_health if b.get("risk_level") == "critical"]
-            if critical_branches:
-                highest_risk_branch = critical_branches[0].get("label", "Unknown")
+        branch_health = []
+        try:
+            branch_health = cls._branch_health()
+            if branch_health:
+                critical_branches = [b for b in branch_health if b.get("risk_level") == "critical"]
+                if critical_branches:
+                    highest_risk_branch = critical_branches[0].get("label", "Unknown")
+        except Exception as e:
+            print(f"Error loading branch health: {e}")
+        
+        # Get certificate counts with error handling
+        expiring_certs = 0
+        next_expiry = "--"
+        try:
+            expiring_certs = cls._count_expiring_certs()
+            next_expiry = cls._next_expiry_date()
+        except Exception as e:
+            print(f"Error loading certificate data: {e}")
+        
+        # Get recent actions with error handling
+        recent_actions = []
+        try:
+            recent_actions = cls._get_recent_manager_actions()
+        except Exception as e:
+            print(f"Error loading recent actions: {e}")
+        
+        # Get performance metrics with error handling
+        performance_metrics = {}
+        try:
+            performance_metrics = cls._get_performance_metrics()
+        except Exception as e:
+            print(f"Error loading performance metrics: {e}")
+            performance_metrics = {
+                "total_processed_24h": 0,
+                "approved_24h": 0,
+                "rejected_24h": 0,
+                "avg_approval_time_minutes": 0,
+                "approval_rate": 0
+            }
+        
+        # Get certificate counts with error handling
+        active_certs = 0
+        revoked_certs = 0
+        try:
+            payloads = cls._certificate_payloads()
+            active_certs = len(payloads) if payloads else 0
+        except Exception as e:
+            print(f"Error loading certificate payloads: {e}")
+        
+        try:
+            revoked_certs = cls.revoked_certificate_count()
+        except Exception as e:
+            print(f"Error loading revoked certificate count: {e}")
         
         return {
             "pending_approvals": pending[:10],
             "high_risk_count": high_risk_count,
             "highest_risk_branch": highest_risk_branch,
-            "expiring_certificates": cls._count_expiring_certs(),
-            "next_expiry": cls._next_expiry_date(),
+            "expiring_certificates": expiring_certs,
+            "next_expiry": next_expiry,
             "oldest_pending": oldest_pending,
             "branch_health": branch_health,
             "risk_feed": risk_feed,
-            "recent_actions": cls._get_recent_manager_actions(),
-            "performance_metrics": cls._get_performance_metrics(),
+            "recent_actions": recent_actions,
+            "performance_metrics": performance_metrics,
+            "active_certificates": active_certs,
+            "revoked_certificates": revoked_certs,
         }
 
     @classmethod

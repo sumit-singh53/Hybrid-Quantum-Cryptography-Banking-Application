@@ -46,6 +46,7 @@ const CertificateOverview = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, roleFilter]);
 
   const handleViewDetail = async (certificateId) => {

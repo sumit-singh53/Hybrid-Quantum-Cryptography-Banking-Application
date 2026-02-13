@@ -314,6 +314,11 @@ const getIssuedCertificates = async (params = {}) => {
     return response.data;
 };
 
+const getDeviceSecret = async (userId) => {
+    const response = await api.get(`${endpoint}/device-secret/${userId}`);
+    return response.data;
+};
+
 const systemAdminService = {
     getOverview,
     getCertificateSummary,
@@ -373,6 +378,7 @@ const systemAdminService = {
     rejectCertificateRequest,
     getCertificateRequestStatistics,
     getIssuedCertificates,
+    getDeviceSecret,
 };
 
 export default systemAdminService;

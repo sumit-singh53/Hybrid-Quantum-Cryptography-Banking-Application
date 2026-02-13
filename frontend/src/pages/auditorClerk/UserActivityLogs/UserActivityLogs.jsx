@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { fetchUserActivityLogs } from "../../../services/auditorClerkService";
 import "./UserActivityLogs.css";
 
@@ -25,7 +25,7 @@ const UserActivityLogs = () => {
   // Sort state
   const [sortConfig, setSortConfig] = useState({ key: "timestamp", direction: "desc" });
 
-  const loadActivityLogs = async () => {
+  const loadActivityLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -44,11 +44,11 @@ const UserActivityLogs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter, eventTypeFilter, dateRange]);
 
   useEffect(() => {
     loadActivityLogs();
-  }, [roleFilter, eventTypeFilter, dateRange]);
+  }, [roleFilter, eventTypeFilter, dateRange, loadActivityLogs]);
 
   const handleApplyFilters = () => {
     setCurrentPage(1);

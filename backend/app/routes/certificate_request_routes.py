@@ -3,6 +3,8 @@ Certificate Request Management Routes
 Admin-only endpoints for managing customer certificate requests
 """
 from datetime import datetime
+from pathlib import Path
+import shutil
 from flask import Blueprint, jsonify, request
 
 from app.config.database import db
@@ -11,6 +13,7 @@ from app.models.user_model import User
 from app.security.access_control import require_certificate
 from app.services.certificate_service import CertificateService
 from app.services.customer_certificate_service import CustomerCertificateService
+from app.security.device_binding_store import DeviceBindingStore
 from app.utils.logger import AuditLogger
 
 
@@ -19,13 +22,8 @@ certificate_request_bp = Blueprint(
 )
 
 
-def admin_only_guard():
-    """Decorator for admin-only access"""
-    return require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
-
-
 @certificate_request_bp.route("", methods=["GET"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def get_certificate_requests():
     """Get all certificate requests with optional filtering"""
     status = request.args.get("status", "").strip().upper()
@@ -65,7 +63,7 @@ def get_certificate_requests():
 
 
 @certificate_request_bp.route("/<int:request_id>", methods=["GET"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def get_certificate_request(request_id):
     """Get a specific certificate request by ID"""
     cert_request = CertificateRequest.query.get(request_id)
@@ -90,9 +88,9 @@ def get_certificate_request(request_id):
 
 
 @certificate_request_bp.route("/<int:request_id>/approve", methods=["POST"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def approve_certificate_request(request_id):
-    """Approve a certificate request and issue certificate"""
+    """Approve a certificate request (does NOT issue certificate yet)"""
     cert_request = CertificateRequest.query.get(request_id)
     
     if not cert_request:
@@ -110,24 +108,13 @@ def approve_certificate_request(request_id):
     admin_user = request.user
     admin_username = admin_user.get("name", "system_admin")
     
-    # Get user details
-    user = User.query.filter_by(username=cert_request.user_id).first()
-    if not user:
-        return jsonify({"message": "User not found"}), 404
-    
     try:
-        # Issue certificate using CustomerCertificateService
-        certificate_result = CustomerCertificateService.issue_customer_certificate(
-            user_id=user.username,
-            full_name=user.full_name,
-            role=user.role,
-        )
-        
-        # Update request status
+        # Update request status to APPROVED
+        # Certificate will be issued when user re-enrolls with new keys
         cert_request.status = RequestStatus.APPROVED
         cert_request.reviewed_by = admin_username
         cert_request.reviewed_at = datetime.utcnow()
-        cert_request.admin_notes = admin_notes or "Certificate approved and issued"
+        cert_request.admin_notes = admin_notes or "Certificate request approved. Please re-enroll to generate your new certificate."
         
         db.session.commit()
         
@@ -138,23 +125,19 @@ def approve_certificate_request(request_id):
         )
         
         return jsonify({
-            "message": "Certificate request approved and certificate issued",
+            "message": "Certificate request approved. User can now re-enroll to generate certificate.",
             "request": cert_request.to_dict(),
-            "certificate": {
-                "certificate_path": certificate_result.get("certificate_path"),
-                "valid_to": certificate_result.get("valid_to"),
-            }
         }), 200
         
     except Exception as e:
         db.session.rollback()
         return jsonify({
-            "message": f"Failed to issue certificate: {str(e)}"
+            "message": f"Failed to approve request: {str(e)}"
         }), 500
 
 
 @certificate_request_bp.route("/<int:request_id>/reject", methods=["POST"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def reject_certificate_request(request_id):
     """Reject a certificate request"""
     cert_request = CertificateRequest.query.get(request_id)
@@ -198,7 +181,7 @@ def reject_certificate_request(request_id):
 
 
 @certificate_request_bp.route("/statistics", methods=["GET"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def get_certificate_request_statistics():
     """Get statistics about certificate requests"""
     total = CertificateRequest.query.count()
@@ -215,7 +198,7 @@ def get_certificate_request_statistics():
 
 
 @certificate_request_bp.route("/issued-certificates", methods=["GET"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def get_issued_certificates():
     """Get list of all issued certificates"""
     limit = int(request.args.get("limit", 50))
@@ -239,7 +222,7 @@ def get_issued_certificates():
 
 
 @certificate_request_bp.route("/revoke-certificate", methods=["POST"])
-@admin_only_guard()
+@require_certificate({"system_admin"}, allowed_actions=["GLOBAL_AUDIT"])
 def revoke_certificate():
     """Revoke a certificate"""
     payload = request.get_json(silent=True) or {}

@@ -60,6 +60,9 @@ const AuditorClerkDashboard = () => {
     <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
       {/* Header */}
       <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-8 shadow-lg">
+        <h2 className="text-3xl font-bold text-slate-900">
+          Welcome Back, {user?.username || 'Auditor'}! 👋
+        </h2>
         <p className="mt-3 text-base leading-relaxed text-slate-600">
           Read-only visibility into hybrid transfer queues, accountability logs,
           and CRL signals. Everything you see is tamper-evident.

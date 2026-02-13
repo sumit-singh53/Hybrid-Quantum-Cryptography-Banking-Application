@@ -28,6 +28,9 @@ const CertificateManagement = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [showDeviceSecretModal, setShowDeviceSecretModal] = useState(false);
+  const [deviceSecretData, setDeviceSecretData] = useState(null);
+  const [loadingDeviceSecret, setLoadingDeviceSecret] = useState(false);
   
   // Form data
   const [adminNotes, setAdminNotes] = useState("");
@@ -41,6 +44,7 @@ const CertificateManagement = () => {
     } else if (activeTab === "certificates") {
       loadCertificates();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, requestsPage, certsPage, statusFilter, requestTypeFilter]);
 
   const loadStatistics = async () => {
@@ -166,6 +170,31 @@ const CertificateManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGetDeviceSecret = async (userId) => {
+    setLoadingDeviceSecret(true);
+    setError("");
+    setDeviceSecretData(null);
+    
+    try {
+      const data = await systemAdminService.getDeviceSecret(userId);
+      setDeviceSecretData(data);
+      setShowDeviceSecretModal(true);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to retrieve device secret");
+    } finally {
+      setLoadingDeviceSecret(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setSuccess("Copied to clipboard!");
+      setTimeout(() => setSuccess(""), 2000);
+    }).catch(() => {
+      setError("Failed to copy to clipboard");
+    });
   };
 
   const getStatusBadge = (status) => {
@@ -426,31 +455,44 @@ const CertificateManagement = () => {
                   <tbody>
                     {certificates.map((cert, index) => (
                       <tr key={index}>
-                        <td className="cert-id">{cert.certificate_id}</td>
-                        <td>{cert.user_id || cert.certificate_id}</td>
+                        <td className="cert-id">{cert.id}</td>
+                        <td>{cert.userId}</td>
                         <td>
                           <span className="badge badge-info">{cert.role}</span>
                         </td>
-                        <td>{formatDate(cert.issued_at)}</td>
-                        <td>{formatDate(cert.valid_to)}</td>
+                        <td>{formatDate(cert.issuedAt)}</td>
+                        <td>{formatDate(cert.validTo)}</td>
                         <td>
-                          <span className={`badge ${getCertStatusBadge(cert.is_revoked)}`}>
-                            {cert.is_revoked ? "Revoked" : "Active"}
+                          <span className={`badge ${getCertStatusBadge(cert.isRevoked)}`}>
+                            {cert.isRevoked ? "Revoked" : "Active"}
                           </span>
                         </td>
                         <td>
-                          {!cert.is_revoked && (
+                          <div className="action-buttons">
                             <button
-                              className="btn-action btn-revoke"
-                              onClick={() => {
-                                setSelectedCertificate(cert);
-                                setShowRevokeModal(true);
-                              }}
-                              title="Revoke Certificate"
+                              className="btn-action btn-info"
+                              onClick={() => handleGetDeviceSecret(cert.userId)}
+                              disabled={loadingDeviceSecret}
+                              title="View Device Secret"
                             >
-                              🚫 Revoke
+                              🔑 Device Key
                             </button>
-                          )}
+                            {!cert.isRevoked && (
+                              <button
+                                className="btn-action btn-revoke"
+                                onClick={() => {
+                                  setSelectedCertificate({
+                                    ...cert,
+                                    certificate_id: cert.id
+                                  });
+                                  setShowRevokeModal(true);
+                                }}
+                                title="Revoke Certificate"
+                              >
+                                🚫 Revoke
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -628,6 +670,81 @@ const CertificateManagement = () => {
                 disabled={loading || !revocationReason.trim()}
               >
                 {loading ? "Revoking..." : "Revoke Certificate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Device Secret Modal */}
+      {showDeviceSecretModal && deviceSecretData && (
+        <div className="modal-overlay" onClick={() => setShowDeviceSecretModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🔑 Device Secret</h2>
+              <button className="modal-close" onClick={() => setShowDeviceSecretModal(false)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="info-box">
+                <span className="info-icon">ℹ️</span>
+                <p>
+                  This device secret is required for the user to login. Keep it secure and share it only with the authorized user.
+                </p>
+              </div>
+              
+              <div className="device-secret-info">
+                <div className="info-row">
+                  <label>User ID:</label>
+                  <div className="info-value">
+                    <code>{deviceSecretData.user_id}</code>
+                  </div>
+                </div>
+                
+                <div className="info-row">
+                  <label>Device Secret:</label>
+                  <div className="info-value">
+                    <code className="device-secret-code">{deviceSecretData.device_secret}</code>
+                    <button
+                      className="btn-copy"
+                      onClick={() => copyToClipboard(deviceSecretData.device_secret)}
+                      title="Copy to clipboard"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="info-row">
+                  <label>Device ID:</label>
+                  <div className="info-value">
+                    <code className="device-id-code">{deviceSecretData.device_id}</code>
+                    <button
+                      className="btn-copy"
+                      onClick={() => copyToClipboard(deviceSecretData.device_id)}
+                      title="Copy to clipboard"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="warning-box" style={{ marginTop: '20px' }}>
+                <span className="warning-icon">⚠️</span>
+                <p>
+                  <strong>Security Notice:</strong> This device secret should be shared securely with the user. 
+                  It cannot be retrieved again after closing this dialog.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowDeviceSecretModal(false)}
+              >
+                Close
               </button>
             </div>
           </div>

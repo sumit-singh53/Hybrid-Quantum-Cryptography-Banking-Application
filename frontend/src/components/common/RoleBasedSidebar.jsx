@@ -149,16 +149,6 @@ const RoleBasedSidebar = ({ onCollapseChange }) => {
     return location.pathname === path;
   };
 
-  const getRoleDisplayName = (role) => {
-    const roleNames = {
-      customer: "Customer",
-      manager: "Manager",
-      auditor_clerk: "Auditor Clerk",
-      system_admin: "System Admin",
-    };
-    return roleNames[role?.toLowerCase()] || role;
-  };
-
   const getRoleIcon = (role) => {
     const roleIcons = {
       customer: "🧑‍💼",

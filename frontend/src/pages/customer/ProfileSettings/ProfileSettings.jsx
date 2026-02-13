@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCustomerProfile, updateCustomerProfile } from '../../../services/customerService';
+import { useToast } from '../../../context/ToastContext';
 import './ProfileSettings.css';
 
 const ProfileSettings = () => {
+  const toast = useToast();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
   // Form state for editable fields
@@ -23,11 +23,11 @@ const ProfileSettings = () => {
 
   useEffect(() => {
     loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProfile = async () => {
     setLoading(true);
-    setError('');
     try {
       const data = await fetchCustomerProfile();
       setProfile(data);
@@ -37,7 +37,7 @@ const ProfileSettings = () => {
         address: data.address || ''
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load profile');
+      toast.error(err.response?.data?.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -82,28 +82,25 @@ const ProfileSettings = () => {
   };
 
   const handleSave = async () => {
-    setError('');
-    setSuccess('');
-
     if (!validateForm()) {
       return;
     }
 
     setSaving(true);
     try {
-      const response = await updateCustomerProfile(formData);
-      setProfile(response.profile);
-      setSuccess('Profile updated successfully!');
-      setIsEditing(false);
+      await updateCustomerProfile(formData);
       
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(''), 5000);
+      // Force reload profile from server to ensure fresh data
+      await loadProfile();
+      
+      toast.success('Profile updated successfully!');
+      setIsEditing(false);
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData?.errors) {
         setValidationErrors(errorData.errors);
       }
-      setError(errorData?.message || 'Failed to update profile');
+      toast.error(errorData?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -117,8 +114,6 @@ const ProfileSettings = () => {
       address: profile?.address || ''
     });
     setValidationErrors({});
-    setError('');
-    setSuccess('');
     setIsEditing(false);
   };
 
@@ -138,7 +133,7 @@ const ProfileSettings = () => {
       <div className="profile-settings-container">
         <div className="error-state">
           <span className="error-icon">⚠</span>
-          <p>{error || 'Profile not found'}</p>
+          <p>Profile not found</p>
           <button onClick={loadProfile} className="retry-button">Retry</button>
         </div>
       </div>
@@ -150,20 +145,6 @@ const ProfileSettings = () => {
       <div className="profile-header">
         <p className="profile-subtitle">Manage your personal information and account details</p>
       </div>
-
-      {error && (
-        <div className="alert alert-error">
-          <span className="alert-icon">⚠</span>
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="alert alert-success">
-          <span className="alert-icon">✓</span>
-          {success}
-        </div>
-      )}
 
       <div className="profile-content">
         {/* Read-Only Information Section */}

@@ -29,6 +29,7 @@ const TransactionRiskAssessment = () => {
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riskData, filters]);
 
   const loadData = async () => {

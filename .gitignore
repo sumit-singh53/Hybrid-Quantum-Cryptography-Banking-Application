@@ -26,8 +26,8 @@ htmlcov/
 .pytest_cache/
 
 # Instance-specific runtime data
-backend/instance/
-instance/
+# backend/instance/
+# instance/
 
 # Sensitive certificate material
 backend/certificates/

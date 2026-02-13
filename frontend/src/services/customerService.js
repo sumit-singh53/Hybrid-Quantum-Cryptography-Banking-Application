@@ -74,6 +74,13 @@ export const getMyCertificateInfo = async () => {
     return response.data;
 };
 
+export const enrollApprovedCertificate = async (userId, publicKeys) => {
+    const response = await api.post(`/customer/enroll-approved-certificate/${userId}`, {
+        client_public_keys: publicKeys
+    });
+    return response.data;
+};
+
 
 // ============================================================================
 // SECURITY CENTER APIs

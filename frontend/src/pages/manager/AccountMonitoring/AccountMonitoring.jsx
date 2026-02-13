@@ -59,6 +59,7 @@ const AccountMonitoring = () => {
 
   useEffect(() => {
     loadAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, accountTypeFilter]);
 
   useEffect(() => {
@@ -381,7 +382,7 @@ const AccountMonitoring = () => {
       {/* Account Detail Modal */}
       {showDetailModal && selectedAccount && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
           onClick={() => setShowDetailModal(false)}
         >
           <div 
@@ -593,7 +594,7 @@ const AccountMonitoring = () => {
       {/* Status Update Modal */}
       {showStatusModal && selectedAccount && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
           onClick={() => setShowStatusModal(false)}
         >
           <div 
@@ -673,7 +674,7 @@ const AccountMonitoring = () => {
       {/* Forward for Review Modal */}
       {showForwardModal && selectedAccount && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" 
           onClick={() => setShowForwardModal(false)}
         >
           <div 

@@ -26,11 +26,14 @@ const CreateTransaction = () => {
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
   const [customerAccount, setCustomerAccount] = useState(null);
+  const [useManualEntry, setUseManualEntry] = useState(false);
   const [formData, setFormData] = useState({
     to_account: "",
     amount: "",
     purpose: "",
     customPurpose: "",
+    manual_beneficiary_name: "",
+    manual_bank_name: "",
   });
   
   // Loading states
@@ -48,6 +51,7 @@ const CreateTransaction = () => {
   useEffect(() => {
     loadBeneficiaries();
     loadCustomerAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadCustomerAccount = async () => {
@@ -64,20 +68,20 @@ const CreateTransaction = () => {
         
         if (primaryAccount) {
           setCustomerAccount({
-            full_name: user?.name || user?.username || "Customer",
+            full_name: user?.username || "Customer",
             account_number: primaryAccount.account_number,
             balance: primaryAccount.balance || response.account_balance || 0,
           });
         } else if (user) {
           setCustomerAccount({
-            full_name: user.name || user.username || "Customer",
+            full_name: user.username || "Customer",
             account_number: user.account_number || "N/A",
             balance: response.account_balance || user.balance || 0
           });
         }
       } else if (user) {
         setCustomerAccount({
-          full_name: user.name || user.username || "Customer",
+          full_name: user.username || "Customer",
           account_number: user.account_number || "N/A",
           balance: user.balance || 0
         });
@@ -86,7 +90,7 @@ const CreateTransaction = () => {
       console.error("Failed to load account:", err);
       if (user) {
         setCustomerAccount({
-          full_name: user.name || user.username || "Customer",
+          full_name: user.username || "Customer",
           account_number: user.account_number || "N/A",
           balance: user.balance || 0
         });
@@ -113,7 +117,7 @@ const CreateTransaction = () => {
     
     if (!beneficiaryId) {
       setSelectedBeneficiary(null);
-      setFormData({ ...formData, to_account: "" });
+      setFormData({ ...formData, to_account: "", manual_beneficiary_name: "", manual_bank_name: "" });
       return;
     }
 
@@ -122,7 +126,9 @@ const CreateTransaction = () => {
       setSelectedBeneficiary(fullBeneficiary);
       setFormData({ 
         ...formData, 
-        to_account: fullBeneficiary.account_number 
+        to_account: fullBeneficiary.account_number,
+        manual_beneficiary_name: "",
+        manual_bank_name: ""
       });
     } catch (err) {
       console.error("Failed to fetch beneficiary:", err);
@@ -131,10 +137,23 @@ const CreateTransaction = () => {
         setSelectedBeneficiary(beneficiary);
         setFormData({ 
           ...formData, 
-          to_account: beneficiary.account_number 
+          to_account: beneficiary.account_number,
+          manual_beneficiary_name: "",
+          manual_bank_name: ""
         });
       }
     }
+  };
+
+  const handleToggleManualEntry = () => {
+    setUseManualEntry(!useManualEntry);
+    setSelectedBeneficiary(null);
+    setFormData({ 
+      ...formData, 
+      to_account: "",
+      manual_beneficiary_name: "",
+      manual_bank_name: ""
+    });
   };
 
   const handleChange = (e) => {
@@ -157,6 +176,18 @@ const CreateTransaction = () => {
     if (toAccountError) {
       setError(toAccountError);
       return false;
+    }
+
+    // Validate manual entry fields if manual entry is enabled
+    if (useManualEntry) {
+      if (!formData.manual_beneficiary_name.trim()) {
+        setError("Please enter beneficiary name");
+        return false;
+      }
+      if (!formData.manual_bank_name.trim()) {
+        setError("Please enter bank name");
+        return false;
+      }
     }
 
     const amountError = validateAmount(formData.amount);
@@ -229,8 +260,11 @@ const CreateTransaction = () => {
         amount: "",
         purpose: "",
         customPurpose: "",
+        manual_beneficiary_name: "",
+        manual_bank_name: "",
       });
       setSelectedBeneficiary(null);
+      setUseManualEntry(false);
     } catch (err) {
       console.error("Transaction error:", err);
       const errorMessage = err.response?.data?.message || err.message || "Transaction failed";
@@ -321,60 +355,165 @@ const CreateTransaction = () => {
                     <div className="spinner"></div>
                     <p>Loading beneficiaries...</p>
                   </div>
-                ) : beneficiaries.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No beneficiaries found</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/customer/beneficiaries")}
-                      className="btn-link"
-                    >
-                      Add Beneficiary
-                    </button>
-                  </div>
                 ) : (
                   <>
+                    {/* Toggle between beneficiary and manual entry */}
                     <div className="form-group">
-                      <label>Select Beneficiary *</label>
-                      <select
-                        value={selectedBeneficiary?.id || ""}
-                        onChange={handleBeneficiarySelect}
-                        className="form-select"
-                      >
-                        <option value="">-- Choose beneficiary --</option>
-                        {beneficiaries.map((ben) => (
-                          <option key={ben.id} value={ben.id}>
-                            {ben.nickname || ben.beneficiary_name}
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleManualEntry()}
+                          className={`btn-link ${!useManualEntry ? 'active' : ''}`}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            border: !useManualEntry ? '2px solid #06b6d4' : '1px solid #e2e8f0',
+                            background: !useManualEntry ? '#ecfeff' : 'white',
+                            color: !useManualEntry ? '#0891b2' : '#64748b',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Select Beneficiary
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleManualEntry()}
+                          className={`btn-link ${useManualEntry ? 'active' : ''}`}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            border: useManualEntry ? '2px solid #06b6d4' : '1px solid #e2e8f0',
+                            background: useManualEntry ? '#ecfeff' : 'white',
+                            color: useManualEntry ? '#0891b2' : '#64748b',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Enter Manually
+                        </button>
+                      </div>
                     </div>
 
-                    {selectedBeneficiary && (
-                      <div className="beneficiary-card">
-                        <div className="beneficiary-info">
-                          <p className="beneficiary-name">{selectedBeneficiary.beneficiary_name}</p>
-                          <p className="beneficiary-details">
-                            {selectedBeneficiary.bank_name} • {maskAccount(selectedBeneficiary.account_number)}
+                    {!useManualEntry ? (
+                      <>
+                        {beneficiaries.length === 0 ? (
+                          <div className="empty-state">
+                            <p>No beneficiaries found</p>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/customer/beneficiaries")}
+                              className="btn-link"
+                            >
+                              Add Beneficiary
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="form-group">
+                              <label>Select Beneficiary *</label>
+                              <select
+                                value={selectedBeneficiary?.id || ""}
+                                onChange={handleBeneficiarySelect}
+                                className="form-select"
+                              >
+                                <option value="">-- Choose beneficiary --</option>
+                                {beneficiaries.map((ben) => (
+                                  <option key={ben.id} value={ben.id}>
+                                    {ben.nickname || ben.beneficiary_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {selectedBeneficiary && (
+                              <div className="beneficiary-card">
+                                <div className="beneficiary-info">
+                                  <p className="beneficiary-name">{selectedBeneficiary.beneficiary_name}</p>
+                                  <p className="beneficiary-details">
+                                    {selectedBeneficiary.bank_name} • {maskAccount(selectedBeneficiary.account_number)}
+                                  </p>
+                                </div>
+                                <span className="verified-badge">✓ Verified</span>
+                              </div>
+                            )}
+
+                            <div className="form-group">
+                              <label>Account Number *</label>
+                              <input
+                                type="text"
+                                name="to_account"
+                                value={formData.to_account}
+                                onChange={handleChange}
+                                readOnly={!!selectedBeneficiary}
+                                className="form-input"
+                                placeholder="Account number"
+                                required
+                              />
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* Manual Entry Fields */}
+                        <div className="form-group">
+                          <label>Beneficiary Name *</label>
+                          <input
+                            type="text"
+                            name="manual_beneficiary_name"
+                            value={formData.manual_beneficiary_name}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="Enter beneficiary name"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Account Number *</label>
+                          <input
+                            type="text"
+                            name="to_account"
+                            value={formData.to_account}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="Enter account number"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Bank Name *</label>
+                          <input
+                            type="text"
+                            name="manual_bank_name"
+                            value={formData.manual_bank_name}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="Enter bank name"
+                            required
+                          />
+                        </div>
+
+                        <div className="alert" style={{ 
+                          background: '#fef3c7', 
+                          border: '1px solid #fbbf24', 
+                          borderRadius: '8px', 
+                          padding: '12px',
+                          display: 'flex',
+                          gap: '8px',
+                          alignItems: 'start'
+                        }}>
+                          <svg style={{ width: '20px', height: '20px', color: '#f59e0b', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#92400e' }}>
+                            Please verify account details carefully. Consider adding this as a beneficiary for future transactions.
                           </p>
                         </div>
-                        <span className="verified-badge">✓ Verified</span>
-                      </div>
+                      </>
                     )}
-
-                    <div className="form-group">
-                      <label>Account Number *</label>
-                      <input
-                        type="text"
-                        name="to_account"
-                        value={formData.to_account}
-                        onChange={handleChange}
-                        readOnly={!!selectedBeneficiary}
-                        className="form-input"
-                        placeholder="Account number"
-                        required
-                      />
-                    </div>
                   </>
                 )}
               </div>
@@ -480,7 +619,7 @@ const CreateTransaction = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={submitting || !customerAccount || beneficiaries.length === 0 || (balanceAfter !== null && balanceAfter < 0)}
+                disabled={submitting || !customerAccount || (balanceAfter !== null && balanceAfter < 0)}
                 className="submit-btn"
               >
                 {submitting ? (
@@ -529,8 +668,9 @@ const CreateTransaction = () => {
         <TransactionConfirmModal
           transactionData={formData}
           beneficiaryInfo={selectedBeneficiary || { 
-            beneficiary_name: "Unknown", 
-            account_number: formData.to_account 
+            beneficiary_name: useManualEntry ? formData.manual_beneficiary_name : "Unknown", 
+            account_number: formData.to_account,
+            bank_name: useManualEntry ? formData.manual_bank_name : "Unknown Bank"
           }}
           onConfirm={handleConfirmTransaction}
           onCancel={handleCancelConfirm}

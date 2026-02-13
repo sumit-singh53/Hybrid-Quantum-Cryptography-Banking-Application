@@ -558,6 +558,99 @@
   cursor: not-allowed;
 }
 
+/* Device Secret Modal */
+.info-box {
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.info-icon {
+  font-size: 1.5rem;
+}
+
+.info-box p {
+  margin: 0;
+  color: #1e40af;
+  font-size: 0.875rem;
+}
+
+.device-secret-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-row label {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.875rem;
+}
+
+.info-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.device-secret-code,
+.device-id-code {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #1e293b;
+  word-break: break-all;
+}
+
+.btn-copy {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.btn-copy:hover {
+  background: #2563eb;
+}
+
+.btn-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.btn-info:hover:not(:disabled) {
+  background: #bfdbfe;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .certificate-management {

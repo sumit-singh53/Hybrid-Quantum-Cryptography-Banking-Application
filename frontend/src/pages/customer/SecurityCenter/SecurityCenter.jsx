@@ -16,12 +16,6 @@ const SecurityCenter = () => {
     try {
       setLoading(true);
       const data = await fetchSecurityDashboard();
-      console.log("Security Dashboard Data:", data);
-      console.log("Security Status:", data?.security_status);
-      console.log("Certificate:", data?.security_status?.certificate);
-      console.log("Password:", data?.security_status?.password);
-      console.log("Encryption:", data?.security_status?.encryption);
-      console.log("2FA:", data?.security_status?.two_factor);
       setDashboard(data);
       setError(null);
     } catch (err) {

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { sha3_256 } from "js-sha3";
 import api from "../../services/api";
+import { useToast } from "../../context/ToastContext";
 import {
   enrollPlatformKey,
   generateClientKeyPair,
@@ -124,12 +125,10 @@ const downloadCertificateFile = ({ certificateText, certificateId }) => {
 };
 
 const CustomerSignup = () => {
-  const navigate = useNavigate();
+  const toast = useToast();
   const [form, setForm] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [credentialSummary, setCredentialSummary] = useState(null);
-  const [success, setSuccess] = useState("");
   const [signupStage, setSignupStage] = useState("idle");
 
   const handleChange = (event) => {
@@ -149,7 +148,6 @@ const CustomerSignup = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
     setCredentialSummary(null);
     setSignupStage("generating-key");
 
@@ -158,11 +156,11 @@ const CustomerSignup = () => {
     const normalizedPassword = form.password.trim();
 
     if (!normalizedName || !normalizedEmail || !normalizedPassword) {
-      setError("Please fill in all fields to register.");
+      toast.error("Please fill in all fields to register.");
       return;
     }
     if (normalizedPassword.length < 8) {
-      setError("Password must be at least 8 characters long.");
+      toast.error("Password must be at least 8 characters long.");
       return;
     }
 
@@ -230,11 +228,11 @@ const CustomerSignup = () => {
         certificateId: certificate_id,
         fullName: normalizedName,
       });
-      setSuccess("Registration successful — certificate downloaded.");
+      toast.success("Registration successful — certificate downloaded.");
       setForm(INITIAL_FORM);
     } catch (err) {
       setSignupStage("blocked");
-      setError(
+      toast.error(
         err.message ||
           "Signup failed. Please check your details and try again.",
       );
@@ -294,16 +292,6 @@ const CustomerSignup = () => {
                   <li>Contact support for any onboarding issues.</li>
                 </ul>
               </div>
-              {error && (
-                <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-red-800 border border-red-200 rounded-lg sm:p-4 bg-red-50 animate-fade-in">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="w-full max-w-lg p-3 mx-auto mb-4 text-sm font-medium text-green-900 border border-green-200 rounded-lg sm:p-4 bg-green-50 animate-fade-in">
-                  {success}
-                </div>
-              )}
               <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label

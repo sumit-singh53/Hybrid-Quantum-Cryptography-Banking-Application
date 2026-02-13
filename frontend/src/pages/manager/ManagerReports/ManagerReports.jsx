@@ -14,11 +14,6 @@ const ManagerReports = () => {
     severity: "medium",
   });
   const [success, setSuccess] = useState(null);
-  const [reportType, setReportType] = useState("summary");
-  const [dateRange, setDateRange] = useState({
-    from: "",
-    to: "",
-  });
 
   const loadReports = async () => {
     try {

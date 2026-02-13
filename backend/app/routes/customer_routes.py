@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request, send_file, current_app
 import io
 
+from app.config.database import db
 from app.security.access_control import require_certificate
 from app.services.certificate_service import CertificateService
 from app.services.customer_portal_service import CustomerPortalService
@@ -649,11 +650,164 @@ def get_my_certificate_requests():
         }), 500
 
 
+@customer_bp.route("/enroll-approved-certificate/<user_id>", methods=["POST"])
+def enroll_approved_certificate(user_id):
+    """
+    Re-enroll with new keys after admin approval (PUBLIC endpoint).
+    User provides new public keys, backend issues certificate.
+    No authentication required - user proves ownership via approved request.
+    """
+    # Get request data
+    data = request.get_json(silent=True) or {}
+    client_keys = data.get("client_public_keys") or {}
+    rsa_public_key_spki = (client_keys.get("rsa_spki") or "").strip()
+    pq_public_key_b64 = (client_keys.get("pq_public_key") or "").strip() or None
+    ml_kem_public_key_b64 = (client_keys.get("ml_kem_public_key") or "").strip()
+    
+    if not rsa_public_key_spki or not ml_kem_public_key_b64:
+        return jsonify({"message": "Client public keys required (RSA and ML-KEM)"}), 400
+    
+    try:
+        # Check if user has an approved certificate request that hasn't been used yet
+        from app.models.certificate_request_model import CertificateRequest, RequestStatus
+        approved_request = CertificateRequest.query.filter_by(
+            user_id=user_id,
+            status=RequestStatus.APPROVED
+        ).order_by(CertificateRequest.reviewed_at.desc()).first()
+        
+        if not approved_request:
+            return jsonify({
+                "message": "No approved certificate request found for this user."
+            }), 404
+        
+        # Check if this request was already used for re-enrollment
+        if approved_request.admin_notes and "Certificate issued on re-enrollment" in approved_request.admin_notes:
+            return jsonify({
+                "message": "This certificate request has already been used for re-enrollment. Please create a new request."
+            }), 400
+        
+        # Get user details from approved request
+        full_name = approved_request.full_name
+        role = approved_request.role
+        
+        # Generate device secret
+        import secrets
+        device_secret = secrets.token_urlsafe(32)
+        
+        # Issue certificate with user's new public keys
+        cert_bundle = CertificateService.issue_customer_certificate(
+            user_id=user_id,
+            full_name=full_name,
+            role=role,
+            ml_kem_public_key_b64=ml_kem_public_key_b64,
+            rsa_public_key_spki=rsa_public_key_spki,
+            pq_public_key_b64=pq_public_key_b64,
+            device_secret=device_secret,
+            validity_days=365,
+        )
+        
+        # Mark request as completed (used for re-enrollment)
+        timestamp = datetime.utcnow().isoformat()
+        approved_request.admin_notes = f"{approved_request.admin_notes or ''}\n\nCertificate issued on re-enrollment at {timestamp}Z"
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Certificate issued successfully",
+            "certificate_pem": cert_bundle["certificate_pem"],
+            "device_secret": device_secret,
+            "cert_hash": cert_bundle["cert_hash"],
+            "valid_to": cert_bundle["valid_to"],
+            "crypto_suite": cert_bundle["crypto_suite"],
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "message": f"Failed to issue certificate: {str(e)}"
+        }), 500
+
+
 @customer_bp.route("/my-certificate", methods=["GET"])
 @require_certificate("customer", allowed_actions=["VIEW_OWN"])
 def get_my_certificate_info():
     """
     Get My Certificate Info - Customer role only.
+    Returns current certificate metadata (read-only).
+    Does NOT expose private keys.
+    """
+    user = request.user or {}
+    user_id = user.get("id")
+    user_role = (user.get("role") or "").lower()
+    
+    # Strict role check
+    if user_role != "customer":
+        return jsonify({
+            "message": "Access denied. This endpoint is for customers only."
+        }), 403
+    
+    if not user_id:
+        return jsonify({"message": "User identification missing"}), 400
+    
+    try:
+        cert_info = CustomerCertificateService.get_my_certificate_info(str(user_id))
+        
+        if not cert_info:
+            return jsonify({
+                "message": "No certificate found",
+                "has_certificate": False
+            }), 404
+        
+        return jsonify(cert_info), 200
+    
+    except Exception as e:
+        return jsonify({
+            "message": f"Failed to retrieve certificate info: {str(e)}"
+        }), 500
+
+
+@customer_bp.route("/download-certificate/<user_id>", methods=["GET"])
+def download_customer_certificate(user_id):
+    """
+    Download certificate for a user (public endpoint for approved requests).
+    Returns NEW certificate file for download (if exists), otherwise returns current certificate.
+    """
+    try:
+        from pathlib import Path
+        
+        # Check if NEW certificate exists (created after admin approval)
+        new_cert_path = Path(__file__).resolve().parents[2] / "certificates" / "users" / "customer" / f"{user_id}_new.pem"
+        
+        if new_cert_path.exists():
+            # Serve the NEW certificate
+            with open(new_cert_path, 'r') as f:
+                cert_text = f.read()
+            role = "customer"
+        else:
+            # Fallback to current certificate
+            cert_text, role, cert_path = CertificateService.fetch_certificate_text(
+                user_id, preferred_role="customer"
+            )
+        
+        # Create response with certificate file
+        from flask import make_response
+        response = make_response(cert_text)
+        response.headers["Content-Type"] = "application/x-pem-file"
+        response.headers["Content-Disposition"] = f"attachment; filename={user_id}.pem"
+        return response
+        
+    except FileNotFoundError:
+        return jsonify({"message": "Certificate not found"}), 404
+    except Exception as e:
+        return jsonify({"message": f"Failed to download certificate: {str(e)}"}), 500
+
+
+@customer_bp.route("/my-certificate", methods=["GET"])
+@require_certificate("customer", allowed_actions=["VIEW_OWN"])
+def get_my_certificate_info_authenticated():
+    """
+    Get My Certificate Info - Customer role only (authenticated).
     Returns current certificate metadata (read-only).
     Does NOT expose private keys.
     """

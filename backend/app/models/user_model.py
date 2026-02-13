@@ -13,6 +13,7 @@ class User(db.Model):
     address = db.Column(db.Text, nullable=True)  # New field (optional)
     aadhar = db.Column(db.String(12), nullable=True)  # New field (optional)
     pan = db.Column(db.String(10), nullable=True)  # New field (optional)
+    customer_id = db.Column(db.String(64), nullable=True)  # Link to Customer table
 
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False)
 

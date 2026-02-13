@@ -172,19 +172,23 @@ def _ensure_user_record(*, user_id: str, username: str, full_name: str, email: s
         db.session.add(role)
         db.session.flush()
     
-    # Check if user already exists by user_id (stored as certificate_id)
-    # First try to find by username
-    user = User.query.filter_by(username=username).first()
+    # Check if user already exists by customer_id (for customers) or username
+    user = User.query.filter_by(customer_id=user_id).first() if role_name.lower() == "customer" else None
+    
+    # If not found by customer_id, try by username
+    if not user:
+        user = User.query.filter_by(username=username).first()
     
     # If not found by username, try by old UUID username format
     if not user:
         user = User.query.filter_by(username=user_id).first()
     
     if user:
-        # Keep existing mobile/address/aadhar/pan if present, otherwise default to empty
+        # Update existing user
         user.username = username  # Update to proper username if it was UUID
         user.full_name = full_name
         user.email = email
+        user.customer_id = user_id if role_name.lower() == "customer" else user.customer_id
         user.role_id = role.id
         user.is_active = True
         if user.mobile is None:
@@ -196,7 +200,7 @@ def _ensure_user_record(*, user_id: str, username: str, full_name: str, email: s
         if user.pan is None:
             user.pan = None
     else:
-        # Provide sensible defaults for fields that are required by the schema
+        # Create new user
         user = User(
             username=username,
             full_name=full_name,
@@ -205,6 +209,7 @@ def _ensure_user_record(*, user_id: str, username: str, full_name: str, email: s
             address=None,
             aadhar=None,
             pan=None,
+            customer_id=user_id if role_name.lower() == "customer" else None,
             role_id=role.id,
             is_active=True,
         )
@@ -679,7 +684,23 @@ def qr_certificate_login():
         account_number = profile.account_number
 
     # Fetch user details from database
-    user_record = User.query.get(certificate["user_id"])
+    # For customers, try to find by customer_id first
+    user_record = None
+    if certificate.get("role") == "customer":
+        user_record = User.query.filter_by(customer_id=certificate["user_id"]).first()
+    
+    # If not found, try by integer ID (for non-customer users)
+    if not user_record:
+        user_record = User.query.get(certificate["user_id"]) if certificate["user_id"].isdigit() else None
+    
+    # If still not found, try by username (fallback)
+    if not user_record:
+        potential_username = certificate["owner"].lower().replace(" ", "_")
+        user_record = User.query.filter_by(username=potential_username).first()
+        
+        # Also try finding by email if username doesn't match
+        if not user_record and certificate.get("email"):
+            user_record = User.query.filter_by(email=certificate["email"]).first()
     
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
@@ -695,6 +716,11 @@ def qr_certificate_login():
         session_user_payload["full_name"] = user_record.full_name
         session_user_payload["username"] = user_record.username
         session_user_payload["email"] = user_record.email
+    else:
+        # Use certificate owner name only, no dummy email
+        session_user_payload["full_name"] = certificate["owner"]
+        session_user_payload["username"] = certificate["owner"].lower().replace(" ", "_")
+        session_user_payload["email"] = None  # No email if user record doesn't exist
     
     if account_number:
         session_user_payload["account_number"] = account_number
@@ -846,7 +872,23 @@ def certificate_login():
         account_number = profile.account_number
 
     # Fetch user details from database
-    user_record = User.query.get(certificate["user_id"])
+    # For customers, try to find by customer_id first
+    user_record = None
+    if certificate.get("role") == "customer":
+        user_record = User.query.filter_by(customer_id=certificate["user_id"]).first()
+    
+    # If not found, try by integer ID (for non-customer users)
+    if not user_record:
+        user_record = User.query.get(certificate["user_id"]) if certificate["user_id"].isdigit() else None
+    
+    # If still not found, try by username (fallback)
+    if not user_record:
+        potential_username = certificate["owner"].lower().replace(" ", "_")
+        user_record = User.query.filter_by(username=potential_username).first()
+        
+        # Also try finding by email if username doesn't match
+        if not user_record and certificate.get("email"):
+            user_record = User.query.filter_by(email=certificate["email"]).first()
 
     access_token = str(uuid.uuid4())
     refresh_token = str(uuid.uuid4())
@@ -862,6 +904,11 @@ def certificate_login():
         session_user_payload["full_name"] = user_record.full_name
         session_user_payload["username"] = user_record.username
         session_user_payload["email"] = user_record.email
+    else:
+        # Use certificate owner name only, no dummy email
+        session_user_payload["full_name"] = certificate["owner"]
+        session_user_payload["username"] = certificate["owner"].lower().replace(" ", "_")
+        session_user_payload["email"] = None  # No email if user record doesn't exist
     
     if account_number:
         session_user_payload["account_number"] = account_number

@@ -1,0 +1,80 @@
+{
+  "a53ca27a-494f-42bf-b1f2-348ac1e74666": {
+    "device_secret": "BHIgbIwmB3jQwvc7up9Rx150OYpGngHnC63Apox8Zqg"
+  },
+  "09e044ce-752e-45d0-b491-8945128c2b15": {
+    "device_secret": "hYOvfsZdvfrZC8godzx2sSAyaUG4RY7ERblyAsSVh4Q"
+  },
+  "admin": {
+    "device_secret": "911313"
+  },
+  "manager-local": {
+    "device_secret": "123456"
+  },
+  "auditor-local": {
+    "device_secret": "123456"
+  },
+  "0453b4ae-4d94-43e1-ab33-1f3793c35e96": {
+    "device_secret": "8OE2V7SiPSVDVrTZBtmn-SM11gH4znP9rs-f5OmoCWY"
+  },
+  "b1927586-47a2-4452-b638-8cd49786c52b": {
+    "device_secret": "iLNXrXvDQZhDHC-5SXwrkBgdRAwsIqyEPCkD1Wc38So"
+  },
+  "7d7c4499-2403-4e5c-8671-8fde12f406d6": {
+    "device_secret": "C_YR7zvmpMWIOAHkWC4clxNhLTyebquQRqOj-uChHIQ"
+  },
+  "ba21ea2b-a362-402e-a799-fc60d4e87830": {
+    "device_secret": "5tBzrz8sAMEZCvqGx0rWszCUnVrIYhOVA6LomECddU8"
+  },
+  "2a080fcd-0062-45f9-a12e-5d6a53d906a1": {
+    "device_secret": "YIKvt5D2eKaJGflSOR0RewTkCQaT7CuWFZavemWWgO8"
+  },
+  "62f3fc51-1e6b-4429-9f93-b3c0d653acaf": {
+    "device_secret": "xwVkzgu_SkiOs5OKAAsDCxC44zoSwTaVKQddZMB8x54"
+  },
+  "11c3144e-4134-4789-85bd-45731934335c": {
+    "device_secret": "GejxO6qSjK4DYerBD86onuvKg9c4mCMh5--AaLs0KgI"
+  },
+  "19e2191d-7c90-4647-8029-427002ed38b0": {
+    "device_secret": "xtRfLx7VMPAPj8UihDdcT-vjHniEYzAwGtwsAd2uIOg"
+  },
+  "65e5a2d8-d6a6-4dd4-8a27-7492a999040f": {
+    "device_secret": "N6AhSUfylTj45j0OUqBnceRjZ2SFF1WFtoW9OCY7Ap8"
+  },
+  "b1adda2b-d595-4add-8467-02bf4841ec97": {
+    "device_secret": "xLslXraoiWkGt1wFdjsDR8K-Yee9iRvOAU4yY6138zk"
+  },
+  "b0613c4c-300b-4f21-bddd-6d507dd50ef1": {
+    "device_secret": "hXS4DSMI3wLzQpsxj2uoV3yZVOxeKLvNoYtq_TXs0kc"
+  },
+  "b2eafb4e-dbfb-4d3e-b1e6-0b0e3be4cb9e": {
+    "device_secret": "5QxFxueyTL6nvItPdzDBGEaLsFVik1F-v2dAWBI0vMo"
+  },
+  "6cf7a41a-fe28-42aa-adee-4358584d9c40": {
+    "device_secret": "wGSxFJu2nXFtHg0ACeLzNEsNujgtrgLe3gkwGxPBHdE"
+  },
+  "76d36777-e9e7-43cd-b02d-48fbc0d48016": {
+    "device_secret": "3yI2uCxmUPqq7VgOnsbTzrx7DqPlLzEcY5wGlpQPLjs"
+  },
+  "5c039764-49eb-4975-a7bf-b525bf93604d": {
+    "device_secret": "2xDHlMy4Og22idwShrdp6N6OZHKtBG7zW8KAKlMulz0"
+  },
+  "fb748e57-3cdb-40e6-95da-0d4941e90257": {
+    "device_secret": "93a3ZZnt5ekLnKU9p9Vf-Nj2MqPLFszzETM5t0_tiLI"
+  },
+  "91dc3393-cebb-4b85-82bc-4514479e10aa": {
+    "device_secret": "xL---8_KPtkylMc2fG8b4uat5uw0b1pGPIR6-r-V3w8"
+  },
+  "dd3dc57b-c941-4725-a9c6-2b055468ba13": {
+    "device_secret": "6P2SHFesjoQa9eayt54Iy2gpVDn0t2IFA5zohaj8jBY"
+  },
+  "b853c7f7-1934-40f7-b738-cfc517ffa844": {
+    "device_secret": "JX5BkmQsvCGp8M8_mYy9JuljAsK3_ML5zjCb0IDE5hg"
+  },
+  "480df3a0-369d-49ee-a5ab-4ad176f7f194": {
+    "device_secret": "r2XBV3Z6GA7BNoNTXT3YmaSgE9L2sPzii3a4qUbnyHM"
+  },
+  "d56abde8-3bc0-4847-9d66-ba96d5f888d2": {
+    "device_secret": "gL7Y_nwT_J_utdW76wCzQvLiRO5bfaV0JkbYM0pnZco"
+  }
+}

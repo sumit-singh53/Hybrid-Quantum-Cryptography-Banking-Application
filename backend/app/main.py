@@ -4,6 +4,9 @@ from flask_cors import CORS
 from app.config.config import Config
 from app.config.database import db
 
+# Import all models to ensure they're registered with SQLAlchemy
+import app.models
+
 # Blueprints
 from app.routes.auth_routes import auth_bp
 from app.routes.transaction_routes import transaction_bp

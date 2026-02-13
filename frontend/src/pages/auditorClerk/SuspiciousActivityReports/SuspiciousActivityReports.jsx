@@ -16,6 +16,7 @@ const SuspiciousActivityReports = () => {
 
   useEffect(() => {
     loadSuspiciousActivities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadSuspiciousActivities = async () => {

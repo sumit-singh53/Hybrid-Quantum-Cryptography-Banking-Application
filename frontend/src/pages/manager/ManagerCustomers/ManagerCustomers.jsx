@@ -42,6 +42,7 @@ const ManagerCustomers = () => {
 
   useEffect(() => {
     loadAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, accountTypeFilter]);
 
   const filtered = useMemo(() => {
@@ -398,7 +399,7 @@ const ManagerCustomers = () => {
 
       {/* Customer Detail Modal */}
       {selectedCustomer && !showStatusModal && !showForwardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelectedCustomer(null)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setSelectedCustomer(null)}>
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 flex items-start justify-between">
               <div>
@@ -548,7 +549,7 @@ const ManagerCustomers = () => {
 
       {/* Status Change Modal */}
       {showStatusModal && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowStatusModal(false)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowStatusModal(false)}>
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-2xl font-bold text-slate-900">Change Account Status</h3>
             <p className="mt-2 text-sm text-slate-600">
@@ -616,7 +617,7 @@ const ManagerCustomers = () => {
 
       {/* Forward for Review Modal */}
       {showForwardModal && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowForwardModal(false)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={() => setShowForwardModal(false)}>
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-2xl font-bold text-slate-900">Forward for Review</h3>
             <p className="mt-2 text-sm text-slate-600">

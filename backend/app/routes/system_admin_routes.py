@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 
 from app.security.access_control import require_certificate
 from app.security.kyber_crystal import KyberCrystal
+from app.security.device_binding_store import DeviceBindingStore
 from app.services.system_admin_service import SystemAdminService
 from app.services.crypto_management_service import CryptoManagementService
 from app.services.system_monitoring_service import SystemMonitoringService
@@ -129,6 +130,33 @@ def crl_revoke():
         action=f"System admin revoked certificate {certificate_id}",
     )
     return jsonify(metadata)
+
+
+@system_admin_bp.route("/device-secret/<user_id>", methods=["GET"])
+@system_admin_guard(allowed_actions=["GLOBAL_AUDIT"])
+def get_device_secret(user_id):
+    """Retrieve device secret for a user (admin only)."""
+    if not user_id:
+        return jsonify({"message": "user_id is required"}), 400
+    
+    device_secret = DeviceBindingStore.get_secret(user_id)
+    if not device_secret:
+        return jsonify({"message": "Device secret not found for this user"}), 404
+    
+    from app.services.certificate_service import CertificateService
+    device_id = CertificateService.derive_device_id(device_secret)
+    
+    AuditLogger.log_action(
+        user=request.user,
+        action=f"Retrieved device secret for user {user_id}",
+    )
+    
+    return jsonify({
+        "user_id": user_id,
+        "device_secret": device_secret,
+        "device_id": device_id,
+        "message": "Device secret retrieved successfully"
+    })
 
 
 @system_admin_bp.route("/ca/rotate", methods=["POST"])

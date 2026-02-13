@@ -46,6 +46,7 @@ const SecurityAlerts = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [severityFilter, alertTypeFilter, dateFrom, dateTo]);
 
   const handleViewDetail = async (alertId) => {

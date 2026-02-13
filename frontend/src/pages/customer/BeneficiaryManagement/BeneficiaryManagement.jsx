@@ -8,13 +8,18 @@ import {
 } from "../../../services/beneficiaryService";
 import BeneficiaryFormModal from "../../../components/customer/BeneficiaryFormModal";
 import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
+import Pagination from "../../../components/common/Pagination";
+import { useToast } from "../../../context/ToastContext";
 
 const BeneficiaryManagement = () => {
+  const toast = useToast();
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -23,7 +28,20 @@ const BeneficiaryManagement = () => {
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
 
   useEffect(() => {
-    loadBeneficiaries();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchBeneficiaries();
+        setBeneficiaries(data.beneficiaries || []);
+        setStatistics(data.statistics || null);
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Failed to load beneficiaries");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadBeneficiaries = async () => {
@@ -32,9 +50,8 @@ const BeneficiaryManagement = () => {
       const data = await fetchBeneficiaries();
       setBeneficiaries(data.beneficiaries || []);
       setStatistics(data.statistics || null);
-      setError(null);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to load beneficiaries");
+      toast.error(err?.response?.data?.message || "Failed to load beneficiaries");
     } finally {
       setLoading(false);
     }
@@ -43,10 +60,9 @@ const BeneficiaryManagement = () => {
   const handleAdd = async (formData) => {
     try {
       await addBeneficiary(formData);
-      setSuccess("Beneficiary added successfully!");
+      toast.success("Beneficiary added successfully!");
       setShowAddModal(false);
       loadBeneficiaries();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       throw new Error(err?.response?.data?.message || "Failed to add beneficiary");
     }
@@ -55,11 +71,10 @@ const BeneficiaryManagement = () => {
   const handleEdit = async (formData) => {
     try {
       await updateBeneficiary(selectedBeneficiary.id, formData);
-      setSuccess("Beneficiary updated successfully!");
+      toast.success("Beneficiary updated successfully!");
       setShowEditModal(false);
       setSelectedBeneficiary(null);
       loadBeneficiaries();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       throw new Error(err?.response?.data?.message || "Failed to update beneficiary");
     }
@@ -68,14 +83,12 @@ const BeneficiaryManagement = () => {
   const handleDelete = async () => {
     try {
       await deleteBeneficiary(selectedBeneficiary.id);
-      setSuccess("Beneficiary deleted successfully!");
+      toast.success("Beneficiary deleted successfully!");
       setShowDeleteModal(false);
       setSelectedBeneficiary(null);
       loadBeneficiaries();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to delete beneficiary");
-      setTimeout(() => setError(null), 3000);
+      toast.error(err?.response?.data?.message || "Failed to delete beneficiary");
     }
   };
 
@@ -100,6 +113,11 @@ const BeneficiaryManagement = () => {
     );
   }
 
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentBeneficiaries = beneficiaries.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="space-y-8 font-['Space_Grotesk','Segoe_UI',sans-serif]">
       {/* Page Header */}
@@ -119,29 +137,6 @@ const BeneficiaryManagement = () => {
           Add Beneficiary
         </button>
       </div>
-
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
-          <div className="flex items-center gap-3">
-            <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm font-medium text-green-800">{success}</p>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          <div className="flex items-center gap-3">
-            <svg className="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm font-medium text-rose-800">{error}</p>
-          </div>
-        </div>
-      )}
 
       {/* Statistics Cards */}
       {statistics && (
@@ -241,7 +236,7 @@ const BeneficiaryManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {beneficiaries.map((beneficiary) => (
+                {currentBeneficiaries.map((beneficiary) => (
                   <tr key={beneficiary.id} className="transition hover:bg-slate-50">
                     <td className="px-6 py-4">
                       <div>
@@ -302,6 +297,18 @@ const BeneficiaryManagement = () => {
                 ))}
               </tbody>
             </table>
+            
+            {/* Pagination */}
+            {beneficiaries.length > itemsPerPage && (
+              <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={beneficiaries.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

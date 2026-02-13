@@ -28,6 +28,7 @@ const ApproveTransaction = () => {
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, filters]);
 
   const loadPendingTransactions = async () => {

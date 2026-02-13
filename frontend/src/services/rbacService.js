@@ -170,7 +170,7 @@ export const hasHigherPrivilege = (role1, role2) => {
   return getRoleLevel(role1) > getRoleLevel(role2);
 };
 
-export default {
+const rbacService = {
   getAllRoles,
   getRoleDetails,
   getAllPermissions,
@@ -185,3 +185,5 @@ export default {
   getRoleLevel,
   hasHigherPrivilege,
 };
+
+export default rbacService;

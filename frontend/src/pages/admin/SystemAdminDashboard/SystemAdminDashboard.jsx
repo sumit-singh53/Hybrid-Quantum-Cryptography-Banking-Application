@@ -10,7 +10,6 @@ const SystemAdminDashboard = () => {
   const [securityEvents, setSecurityEvents] = useState([]);
   const [auditFeed, setAuditFeed] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   
   // Get user info from localStorage
@@ -26,10 +25,6 @@ const SystemAdminDashboard = () => {
   const user = getUserInfo();
   
   // Pagination state
-  const [securityEventsPage, setSecurityEventsPage] = useState(1);
-  const [securityEventsTotal, setSecurityEventsTotal] = useState(0);
-  const [auditFeedPage, setAuditFeedPage] = useState(1);
-  const [auditFeedTotal, setAuditFeedTotal] = useState(0);
   const eventsPerPage = 10;
   const auditsPerPage = 15;
 
@@ -39,9 +34,7 @@ const SystemAdminDashboard = () => {
       page: page 
     });
     setSecurityEvents(response.events || response);
-    setSecurityEventsTotal(response.total || (response.events || response).length);
-    setSecurityEventsPage(page);
-  }, []);
+  }, [eventsPerPage]);
 
   const loadAuditFeed = useCallback(async (page = 1) => {
     const response = await systemAdminService.getGlobalAuditFeed({ 
@@ -49,9 +42,7 @@ const SystemAdminDashboard = () => {
       page: page 
     });
     setAuditFeed(response.audits || response);
-    setAuditFeedTotal(response.total || (response.audits || response).length);
-    setAuditFeedPage(page);
-  }, []);
+  }, [auditsPerPage]);
 
   const hydrateOverview = useCallback(async () => {
     setError(null);
@@ -64,18 +55,12 @@ const SystemAdminDashboard = () => {
       setError(message || "Unable to load system admin data");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [loadAuditFeed, loadSecurityEvents]);
 
   useEffect(() => {
     hydrateOverview();
   }, [hydrateOverview]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await hydrateOverview();
-  };
 
   const overviewMetrics = useMemo(
     () => ({
@@ -145,8 +130,11 @@ const SystemAdminDashboard = () => {
               </span>
             </div>
             <h1 className="mt-3 text-2xl font-semibold sm:text-3xl text-slate-900 dark:text-white">
-              Operational trust &amp; certificate authority command
+              Welcome Back, {user?.username || 'Admin'}! 👋
             </h1>
+            <p className="mt-2 text-base text-slate-600 dark:text-slate-400">
+              Operational trust &amp; certificate authority command
+            </p>
             {user && user.role && (
               <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1 dark:border-cyan-400/30 dark:bg-cyan-500/10">
                 <svg className="h-4 w-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,16 +151,6 @@ const SystemAdminDashboard = () => {
               </p>
             )}
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 border-indigo-400/40 bg-indigo-500/10 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-500/20 dark:border-indigo-400/40 dark:bg-indigo-500/10 dark:text-indigo-100 dark:hover:border-indigo-200 dark:hover:bg-indigo-500/20"
-          >
-            <svg className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {refreshing ? "Syncing…" : "Refresh"}
-          </button>
         </div>
 
         {/* Enhanced Metrics Grid */}

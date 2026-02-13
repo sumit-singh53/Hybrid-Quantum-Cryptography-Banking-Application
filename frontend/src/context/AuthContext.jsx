@@ -182,7 +182,7 @@ export const AuthProvider = ({ children }) => {
     const normalized = (resolved || "").trim();
     if (!normalized) {
       throw new Error(
-        "This device is not registered for this certificate. Provide the device secret from your onboarding kit to re-enroll.",
+        "Device not registered. Click 'Need to re-enroll secure keys?' below and provide your private key (.pem) and device secret to complete re-enrollment.",
       );
     }
     return normalized;
@@ -202,6 +202,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
+      console.log("[AUTH] Starting certificate login process");
+      console.log("[AUTH] Reading certificate file:", certificateFile.name);
       const certificateText = await readFileAsText(certificateFile);
       const certificateData = parseCertificateText(certificateText);
       let certificateId =
@@ -222,15 +224,21 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Certificate missing certificate_id field");
       }
 
+      console.log("[AUTH] Certificate ID:", certificateId);
+      console.log("[AUTH] Has private key file:", !!privateKeyFile);
+      console.log("[AUTH] Has manual device secret:", !!manualDeviceSecret.trim());
+
       const normalizedDeviceSecret = await requireStoredDeviceSecret(
         certificateId,
         manualDeviceSecret,
       );
+      console.log("[AUTH] Device secret resolved successfully");
 
       let derivedDeviceId = storedDeviceId;
       if (!derivedDeviceId) {
         derivedDeviceId = await deriveDeviceIdLegacy(normalizedDeviceSecret);
       }
+      console.log("[AUTH] Device ID:", derivedDeviceId);
 
       if (!derivedDeviceId) {
         throw new Error("Unable to determine the device binding identifier");
@@ -242,10 +250,12 @@ export const AuthProvider = ({ children }) => {
         );
       }
 
+      console.log("[AUTH] Requesting challenge from backend");
       const challenge = await requestCertificateChallenge({
         certificateId,
         deviceId: derivedDeviceId,
       });
+      console.log("[AUTH] Challenge received:", challenge.challenge_token);
 
       const bindingMode = (
         challenge.binding_mode || "device_secret"
@@ -255,12 +265,14 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (privateKeyFile) {
+        console.log("[AUTH] Importing private key from file");
         try {
           const privateKeyPem = await readFileAsText(privateKeyFile);
           const privateKeyObject = await importPrivateKeyFromPem(privateKeyPem);
           await enrollPlatformKey(certificateId, privateKeyObject, {
             deviceSecret: normalizedDeviceSecret,
           });
+          console.log("[AUTH] Private key enrolled successfully");
         } catch (importError) {
           console.error("Private key import failed", importError);
           throw new Error(
@@ -271,30 +283,40 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
+        console.log("[AUTH] Ensuring platform key for certificate:", certificateId);
         await ensurePlatformKey(certificateId);
+        console.log("[AUTH] Platform key verified successfully");
       } catch (keystoreError) {
+        console.error("[AUTH] Platform key verification failed:", keystoreError);
         if (privateKeyFile) {
           throw new Error(
-            keystoreError.message ||
-              "Secure keystore unavailable after re-enrollment. Reload the page and try again.",
+            "Key enrollment failed after importing private key. Please reload the page and try again.",
           );
         }
 
         console.error("Secure key enrollment missing", keystoreError);
         throw new Error(
-          keystoreError.message ||
-            "Secure key material missing. Provide the matching private key to re-enroll.",
+          "Private key not found in browser. Click 'Need to re-enroll secure keys?' below and provide your private key (.pem) file to continue.",
         );
       }
 
+      console.log("[AUTH] Building challenge message with nonce and device ID");
       const message = buildChallengeMessage(challenge.nonce, derivedDeviceId);
+      
+      console.log("[AUTH] Signing challenge with platform key");
       const rsaSignature = await signWithPlatformKey(certificateId, message);
+      console.log("[AUTH] RSA signature generated successfully");
+      
       const pqSignature = null; // TODO: integrate Dilithium signer in browser
+      
+      console.log("[AUTH] Computing device proof");
       const deviceProof = computeDeviceProof(
         normalizedDeviceSecret,
         challenge.nonce,
       );
+      console.log("[AUTH] Device proof computed successfully");
 
+      console.log("[AUTH] Finalizing certificate login with backend");
       const session = await finalizeCertificateLogin({
         challengeToken: challenge.challenge_token,
         deviceId: derivedDeviceId,
@@ -302,6 +324,7 @@ export const AuthProvider = ({ children }) => {
         rsaSignature,
         pqSignature,
       });
+      console.log("[AUTH] Backend login successful");
 
       const { token, user } = session;
 

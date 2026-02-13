@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL: process.env.REACT_APP_API_URL,
-    timeout: 15000,
+    timeout: 30000, // Increased to 30 seconds for dashboard loads
 });
 
 /**

@@ -489,6 +489,49 @@
   color: #a0aec0;
 }
 
+/* Download Button */
+.request-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.download-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.download-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.download-button .button-icon {
+  font-size: 1.25rem;
+}
+
+.download-hint {
+  font-size: 0.875rem;
+  color: #059669;
+  margin: 0;
+  text-align: center;
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .certificate-request-container {
@@ -522,5 +565,210 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+}
+
+/* Re-enrollment Section */
+.reenroll-section {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border: 2px solid #0ea5e9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.reenroll-section h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin: 0 0 0.75rem 0;
+}
+
+.reenroll-section p {
+  font-size: 0.95rem;
+  color: #0c4a6e;
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+.reenroll-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.reenroll-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+}
+
+.reenroll-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.reenroll-instructions {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.reenroll-instructions h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin: 0 0 0.75rem 0;
+}
+
+.reenroll-instructions ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #0c4a6e;
+}
+
+.reenroll-instructions li {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.reenroll-instructions li:last-child {
+  margin-bottom: 0;
+}
+
+/* Device Secret Box */
+.device-secret-box {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.device-secret-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.secret-icon {
+  font-size: 1.5rem;
+}
+
+.device-secret-header label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #92400e;
+  margin: 0;
+  text-transform: none;
+}
+
+.device-secret-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.device-secret-code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  word-break: break-all;
+  background: #f9fafb;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.copy-button {
+  padding: 0.5rem 1rem;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.copy-button:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.device-secret-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #92400e;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Download Instructions */
+.download-instructions {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.download-instructions h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin: 0 0 0.75rem 0;
+}
+
+.download-instructions ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #0c4a6e;
+}
+
+.download-instructions li {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.download-instructions li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .device-secret-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .copy-button {
+    width: 100%;
   }
 }

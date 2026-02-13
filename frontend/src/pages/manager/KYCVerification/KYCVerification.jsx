@@ -60,6 +60,7 @@ const KYCVerification = () => {
   useEffect(() => {
     loadCustomers();
     loadStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   useEffect(() => {
@@ -342,7 +343,7 @@ const KYCVerification = () => {
       {/* Customer Detail Modal */}
       {selectedCustomer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4"
           onClick={() => {
             setSelectedCustomer(null);
             setCustomerDetails(null);
@@ -587,7 +588,7 @@ const KYCVerification = () => {
       {/* Action Modal (Verify/Reject) */}
       {actionModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4"
           onClick={() => {
             setActionModal(null);
             setRemarks("");
