@@ -1,0 +1,38 @@
+========================================
+SYSTEM ADMIN LOGIN INSTRUCTIONS
+========================================
+
+To login as System Admin, you need THREE things:
+
+1. CERTIFICATE FILE (for authentication):
+   📄 admin_system_admin_certificate.pem
+   
+2. PRIVATE KEY FILE (for re-enrollment):
+   🔑 admin_system_admin_private.pem
+   
+3. DEVICE SECRET (from file):
+   🔐 911313
+   (also in: admin_device_secret.txt)
+
+========================================
+LOGIN STEPS:
+========================================
+
+1. Go to the login page
+2. Upload the CERTIFICATE file: admin_system_admin_certificate.pem
+3. Click "Need to re-enroll secure keys?" to show additional fields
+4. Upload the PRIVATE KEY file: admin_system_admin_private.pem
+5. Enter the DEVICE SECRET: 911313
+6. Click "Login"
+
+========================================
+IMPORTANT NOTES:
+========================================
+
+- The .pem file is your CERTIFICATE (upload first)
+- The .pem file with "private" in name is your PRIVATE KEY (upload in re-enrollment section)
+- The device secret is: 911313
+- Make sure to upload BOTH files on first login
+- After first successful login, you only need the certificate
+
+========================================

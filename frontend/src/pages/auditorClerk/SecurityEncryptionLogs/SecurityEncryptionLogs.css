@@ -1,0 +1,50 @@
+/* Security & Encryption Logs Styles */
+.security-encryption-logs {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .security-encryption-logs {
+    padding: 1rem;
+  }
+}
+
+/* Table responsiveness */
+@media (max-width: 1024px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Print styles for audit reports */
+@media print {
+  .security-encryption-logs button,
+  .security-encryption-logs .no-print {
+    display: none !important;
+  }
+  
+  .security-encryption-logs table {
+    page-break-inside: auto;
+  }
+  
+  .security-encryption-logs tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+/* Security indicator styles */
+.security-indicator {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

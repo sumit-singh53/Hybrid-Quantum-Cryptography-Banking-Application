@@ -1,0 +1,93 @@
+[
+  {
+    "event_id": "fc62f66e-f055-4f93-87c6-28586d3304aa",
+    "timestamp": "2026-02-06T19:21:37Z",
+    "transaction_id": "4755410c-811e-4b5a-81a3-013a11878e6f",
+    "customer_id": "a53ca27a-494f-42bf-b1f2-348ac1e74666",
+    "cert_hash": "45afcbb9379cd1f3d6e515ba46f1367cef459e4a09aca6842967ff11b466fc0f",
+    "device_id": "b7c7f1c0a26646de77ddf9866736feed872e99659f6e2c3512b656a865cfc424",
+    "action": "CREATE",
+    "status": "COMPLETED",
+    "amount": "1000.0",
+    "prev_hash": "GENESIS",
+    "entry_hash": "a2faedb45caa66a0ed4780e37b3bf29648e67d82a1b1869f1d0c4235665a1c3c"
+  },
+  {
+    "event_id": "213b48fc-3535-4fd4-b756-0bd35404d74b",
+    "timestamp": "2026-02-11T10:00:47Z",
+    "transaction_id": "0b33de63-1e42-40ae-8c8f-c9437cc70b8b",
+    "customer_id": "09e044ce-752e-45d0-b491-8945128c2b15",
+    "cert_hash": "420a36db63e978db684d3fb4cecec70cdc94b35e192d698051a06860695ce8c3",
+    "device_id": "50f2064b42841552660485b2ab52196704868cc74c168faa1f95af73133966ec",
+    "action": "CREATE",
+    "status": "PENDING",
+    "amount": "120000.0",
+    "prev_hash": "a2faedb45caa66a0ed4780e37b3bf29648e67d82a1b1869f1d0c4235665a1c3c",
+    "entry_hash": "98505421dd865287b1c354445f92867cc31606bfa3b12c756a1e4fa732919983"
+  },
+  {
+    "event_id": "11ea0569-489a-4098-8ed8-abc74d3f0f4c",
+    "timestamp": "2026-02-13T09:18:20Z",
+    "transaction_id": "tx-007",
+    "customer_id": "manager-1",
+    "cert_hash": "hash-cert-refresh",
+    "device_id": "67f86855801b7e3fd228f58fd26b1837b6948d44bb7d382dcc18cbe5c8c8c612",
+    "action": "APPROVE",
+    "status": null,
+    "amount": null,
+    "prev_hash": "98505421dd865287b1c354445f92867cc31606bfa3b12c756a1e4fa732919983",
+    "entry_hash": "3681f4e419341285fc952a344da417913a884e0727e297c90c9e0392aac9ec0f"
+  },
+  {
+    "event_id": "e7108808-5f77-493d-ba2f-1482436568a4",
+    "timestamp": "2026-02-13T09:20:05Z",
+    "transaction_id": "tx-007",
+    "customer_id": "manager-1",
+    "cert_hash": "hash-cert-refresh",
+    "device_id": "67f86855801b7e3fd228f58fd26b1837b6948d44bb7d382dcc18cbe5c8c8c612",
+    "action": "APPROVE",
+    "status": null,
+    "amount": null,
+    "prev_hash": "3681f4e419341285fc952a344da417913a884e0727e297c90c9e0392aac9ec0f",
+    "entry_hash": "b57abe29a580a550cda21a9195ff387ebffe526bf3ad5b2f3a5e2a2d52489cd1"
+  },
+  {
+    "event_id": "411c44d1-6606-4e1b-9b45-c13212f19caa",
+    "timestamp": "2026-02-13T11:21:17Z",
+    "transaction_id": "82be31ca-0dcf-408f-a9a9-673ce03d5df1",
+    "customer_id": "09e044ce-752e-45d0-b491-8945128c2b15",
+    "cert_hash": "420a36db63e978db684d3fb4cecec70cdc94b35e192d698051a06860695ce8c3",
+    "device_id": "50f2064b42841552660485b2ab52196704868cc74c168faa1f95af73133966ec",
+    "action": "CREATE",
+    "status": "COMPLETED",
+    "amount": "500.0",
+    "prev_hash": "b57abe29a580a550cda21a9195ff387ebffe526bf3ad5b2f3a5e2a2d52489cd1",
+    "entry_hash": "39639500de8c4a6fcf1021286aa80a581e7ba34fc8c3a0329adc03b13dc53a5d"
+  },
+  {
+    "event_id": "e4b1e04b-83b6-416c-b93c-9b49bae21383",
+    "timestamp": "2026-02-13T11:26:07Z",
+    "transaction_id": "1d0afb79-3a82-4b15-b02c-5ca461bf57af",
+    "customer_id": "b2eafb4e-dbfb-4d3e-b1e6-0b0e3be4cb9e",
+    "cert_hash": "ca14c85c59c889e29008300cfcbc1b6a3bce4d8757a8dfacbe920093cc3febe8",
+    "device_id": "dbd5747745854d73437ac5eb6ec321ec40c49e194736f58eb4750b4fdcfb7817",
+    "action": "CREATE",
+    "status": "COMPLETED",
+    "amount": "100000.0",
+    "prev_hash": "39639500de8c4a6fcf1021286aa80a581e7ba34fc8c3a0329adc03b13dc53a5d",
+    "entry_hash": "d01baae498152fae98b5cab57c585fce428fc1197b5232fcef500ad583b44170"
+  },
+  {
+    "event_id": "af38523d-4545-4372-ab2f-3215c733b853",
+    "timestamp": "2026-02-13T11:27:56Z",
+    "transaction_id": "b4ebbfac-f707-4cc4-956f-9396da3cda9d",
+    "customer_id": "09e044ce-752e-45d0-b491-8945128c2b15",
+    "cert_hash": "420a36db63e978db684d3fb4cecec70cdc94b35e192d698051a06860695ce8c3",
+    "device_id": "50f2064b42841552660485b2ab52196704868cc74c168faa1f95af73133966ec",
+    "action": "CREATE",
+    "status": "PENDING",
+    "amount": "100001.0",
+    "prev_hash": "d01baae498152fae98b5cab57c585fce428fc1197b5232fcef500ad583b44170",
+    "entry_hash": "61f9b30695dc261bc07b1d82b5786100e1bf0439d73fc10dd68552797e382ebb"
+  }
+]

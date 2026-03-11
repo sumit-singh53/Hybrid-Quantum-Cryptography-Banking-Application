@@ -1,0 +1,36 @@
+/* User Activity Logs Styles */
+.user-activity-logs {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-activity-logs {
+    padding: 1rem;
+  }
+}
+
+/* Table responsiveness */
+@media (max-width: 1024px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Print styles for audit reports */
+@media print {
+  .user-activity-logs button,
+  .user-activity-logs .no-print {
+    display: none !important;
+  }
+  
+  .user-activity-logs table {
+    page-break-inside: auto;
+  }
+  
+  .user-activity-logs tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

@@ -1,0 +1,68 @@
+/* CustomerAccounts.css */
+
+.customer-accounts-container {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+/* Smooth transitions for interactive elements */
+.customer-accounts-container button,
+.customer-accounts-container select,
+.customer-accounts-container input {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Table hover effects */
+.customer-accounts-container tbody tr:hover {
+  background-color: rgba(248, 250, 252, 0.8);
+}
+
+/* Modal backdrop animation */
+.customer-accounts-container .modal-backdrop {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal content animation */
+.customer-accounts-container .modal-content {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Status badge animations */
+.customer-accounts-container .status-badge {
+  transition: transform 0.2s ease-in-out;
+}
+
+.customer-accounts-container .status-badge:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive table scrolling */
+@media (max-width: 768px) {
+  .customer-accounts-container table {
+    font-size: 0.875rem;
+  }
+  
+  .customer-accounts-container th,
+  .customer-accounts-container td {
+    padding: 0.5rem;
+  }
+}
