@@ -37,6 +37,36 @@ This document is a GitHub-facing technical dossier that explains the project in 
 
 ## 3) Codebase organization
 
+### Repository tree (high-level)
+
+```text
+Hybrid-Quantum-Cryptography-Banking-Application/
+├── README.md
+├── FINAL_PROJECT_REPORT.md
+├── backend/
+│   ├── app/
+│   │   ├── config/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── security/
+│   │   └── tests/
+│   ├── scripts/
+│   ├── certificates/
+│   └── instance/
+├── frontend/
+│   ├── public/
+│   └── src/
+│       ├── components/
+│       ├── pages/
+│       ├── context/
+│       ├── routes/
+│       ├── services/
+│       └── utils/
+├── certificates/
+└── docs/
+```
+
 ### Backend (`backend/`)
 - `app/config/` — app and DB config
 - `app/models/` — SQLAlchemy models

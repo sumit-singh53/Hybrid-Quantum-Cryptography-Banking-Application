@@ -25,6 +25,47 @@ This repository contains:
 - `backend/instance/` — runtime local state stores (audit/event json + db)
 - `FINAL_PROJECT_REPORT.md` — complete end-to-end project report
 
+## Repository structure (tree)
+
+```text
+Hybrid-Quantum-Cryptography-Banking-Application/
+├── README.md
+├── FINAL_PROJECT_REPORT.md
+├── backend/
+│   ├── run.py
+│   ├── requirements.txt
+│   ├── README.md
+│   ├── SECURITY.md
+│   ├── app/
+│   │   ├── config/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── security/
+│   │   ├── tests/
+│   │   └── utils/
+│   ├── scripts/
+│   ├── certificates/
+│   └── instance/
+├── frontend/
+│   ├── package.json
+│   ├── README.md
+│   ├── public/
+│   └── src/
+│       ├── components/
+│       ├── pages/
+│       ├── context/
+│       ├── routes/
+│       ├── services/
+│       ├── utils/
+│       └── config/
+├── certificates/
+│   ├── ca/
+│   └── revoked/
+└── docs/
+  └── GITHUB_PROJECT_DETAILS.md
+```
+
 ## Core architecture
 
 - **Backend**: Flask + SQLAlchemy + cryptography + pqcrypto
